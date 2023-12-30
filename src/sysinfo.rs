@@ -45,14 +45,14 @@ pub struct SystemStat {
 
 #[derive(Debug, Default, Clone)]
 pub struct MemoryStat {
-    pub memory_total: u64,
-    pub memory_used: u64,
-    pub memory_free: u64,
-    pub memory_cache: u64,
-    pub memory_buffers: u64,
-    pub memory_dirty: u64,
-    pub memory_writeback: u64,
-    pub memory_usage: f64,
+    pub total: u64,
+    pub used: u64,
+    pub free: u64,
+    pub cache: u64,
+    pub buffers: u64,
+    pub dirty: u64,
+    pub writeback: u64,
+    pub usage: f64,
 
     pub swap_total: u64,
     pub swap_used: u64,
@@ -164,18 +164,18 @@ pub fn read_memory_stats() -> MemoryStat {
             _ => {}
         }
     }
+
     let memory_used = memory_total - memory_available;
     let swap_used = swap_total - swap_free;
-
     MemoryStat {
-        memory_total,
-        memory_used,
-        memory_free,
-        memory_cache,
-        memory_buffers,
-        memory_dirty,
-        memory_writeback,
-        memory_usage: memory_used as f64 / memory_total as f64,
+        total: memory_total,
+        used: memory_used,
+        free: memory_free,
+        cache: memory_cache,
+        buffers: memory_buffers,
+        dirty: memory_dirty,
+        writeback: memory_writeback,
+        usage: memory_used as f64 / memory_total as f64,
         swap_total,
         swap_used,
         swap_usage: swap_used as f64 / swap_total as f64,

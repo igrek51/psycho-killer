@@ -107,16 +107,29 @@ impl App {
             "
 OS: {}
 Host: {}
-CPU cores: {}
 
 Memory usage: {} / {} ({})
+Cache: {}
+Buffers: {}
+Dirty: {}
+Writeback: {}
+Swap: {} / {} ({})
+
+CPU cores: {}
 ",
             self.sys_stat.os_version,
             self.sys_stat.host_name,
+            self.sys_stat.memory.used.format_kib(),
+            self.sys_stat.memory.total.format_kib(),
+            self.sys_stat.memory.usage.format_percent(),
+            self.sys_stat.memory.cache.format_kib(),
+            self.sys_stat.memory.buffers.format_kib(),
+            self.sys_stat.memory.dirty.format_kib(),
+            self.sys_stat.memory.writeback.format_kib(),
+            self.sys_stat.memory.swap_used.format_kib(),
+            self.sys_stat.memory.swap_total.format_kib(),
+            self.sys_stat.memory.swap_usage.format_percent(),
             self.sys_stat.cpu_num,
-            self.sys_stat.memory.memory_used.format_kib(),
-            self.sys_stat.memory.memory_total.format_kib(),
-            self.sys_stat.memory.memory_usage.format_percent(),
         )
         .trim()
         .to_string()

@@ -1,7 +1,7 @@
 /// Format kilobytes as kiB, MiB or GiB, with 2-digit precision
 pub fn format_kib(kilobytes: u64) -> String {
     if kilobytes < 1024 {
-        format!("{kilobytes} kiB")
+        format!("{kilobytes} KiB")
     } else if kilobytes < 1024 * 1024 {
         format!("{:.2} MiB", kilobytes as f64 / 1024f64)
     } else {
