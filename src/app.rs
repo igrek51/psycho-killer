@@ -1,5 +1,6 @@
 use crate::appdata::WindowPhase;
 use crate::kill::{generate_knwon_signals, kill_pid, KillSignal};
+use crate::numbers::{BytesFormatterExt, PercentFormatterExt};
 use crate::sysinfo::{
     get_proc_stats, get_system_stats, show_statistics, ProcessStat, SystemProcStats, SystemStat,
     PRINT_SYS_STATS,
@@ -107,8 +108,15 @@ impl App {
 OS: {}
 Host: {}
 CPU cores: {}
+
+Memory usage: {} / {} ({})
 ",
-            self.sys_stat.os_version, self.sys_stat.host_name, self.sys_stat.cpu_num,
+            self.sys_stat.os_version,
+            self.sys_stat.host_name,
+            self.sys_stat.cpu_num,
+            self.sys_stat.memory.memory_used.format_kib(),
+            self.sys_stat.memory.memory_total.format_kib(),
+            self.sys_stat.memory.memory_usage.format_percent(),
         )
         .trim()
         .to_string()

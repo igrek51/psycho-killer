@@ -1,5 +1,6 @@
 use std::ops::Deref;
 
+use anyhow::Context;
 use sysinfo::{NetworkExt, ProcessExt, System, SystemExt, Uid};
 
 pub const PRINT_SYS_STATS: bool = false;
@@ -25,12 +26,6 @@ pub struct ProcessStat {
     pub run_time: u64,
 }
 
-impl ProcessStat {
-    pub fn display(&self) -> String {
-        format!("[{}] {}", self.pid, self.display_name)
-    }
-}
-
 #[derive(Debug, Default, Clone)]
 pub struct SystemStat {
     pub os_version: String,
@@ -39,24 +34,29 @@ pub struct SystemStat {
     pub cpu_num: usize,
     pub cpu_usage: f64,
 
-    pub memory_total: u64,
-    pub memory_used: u64,
-    pub memory_free: u64,
-    pub memory_cache: u64,
-    pub memory_buffers: u64,
-    pub memory_usage: f64,
-    pub memory_dirty: u64,
-    pub memory_writeback: u64,
-
-    pub swap_total: u64,
-    pub swap_used: u64,
-    pub swap_usage: f64,
+    pub memory: MemoryStat,
 
     pub disk_space_usage: f64,
     pub disk_io_usage: f64,
 
     pub network_transfer_tx: u64,
     pub network_transfer_rx: u64,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct MemoryStat {
+    pub memory_total: u64,
+    pub memory_used: u64,
+    pub memory_free: u64,
+    pub memory_cache: u64,
+    pub memory_buffers: u64,
+    pub memory_dirty: u64,
+    pub memory_writeback: u64,
+    pub memory_usage: f64,
+
+    pub swap_total: u64,
+    pub swap_used: u64,
+    pub swap_usage: f64,
 }
 
 pub fn get_proc_stats() -> SystemProcStats {
@@ -98,11 +98,87 @@ pub fn get_system_stats() -> SystemStat {
     let host_name = sys.host_name().unwrap_or(String::new());
     let cpu_num = sys.cpus().len();
 
+    let memory: MemoryStat = read_memory_stats();
+
     SystemStat {
         os_version,
         host_name,
         cpu_num,
+        memory,
         ..SystemStat::default()
+    }
+}
+
+pub fn read_memory_stats() -> MemoryStat {
+    let meminfo_content = std::fs::read_to_string("/proc/meminfo").unwrap_or(String::new());
+    let meminfo_lines: Vec<&str> = meminfo_content.split('\n').collect();
+
+    let mut memory_total: u64 = 0;
+    let mut memory_free: u64 = 0;
+    let mut memory_available: u64 = 0;
+    let mut memory_cache: u64 = 0;
+    let mut memory_buffers: u64 = 0;
+    let mut memory_dirty: u64 = 0;
+    let mut memory_writeback: u64 = 0;
+    let mut swap_total: u64 = 0;
+    let mut swap_free: u64 = 0;
+
+    for line in meminfo_lines {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() != 3 {
+            continue;
+        }
+        let key: &str = parts[0];
+        let value_kb: u64 = parts[1]
+            .parse()
+            .context("failed to parse meminfo value as u64")
+            .unwrap();
+        match key {
+            "MemTotal:" => {
+                memory_total = value_kb;
+            }
+            "MemFree:" => {
+                memory_free = value_kb;
+            }
+            "MemAvailable:" => {
+                memory_available = value_kb;
+            }
+            "Buffers:" => {
+                memory_buffers = value_kb;
+            }
+            "Cached:" => {
+                memory_cache = value_kb;
+            }
+            "Dirty:" => {
+                memory_dirty = value_kb;
+            }
+            "Writeback:" => {
+                memory_writeback = value_kb;
+            }
+            "SwapTotal:" => {
+                swap_total = value_kb;
+            }
+            "SwapFree:" => {
+                swap_free = value_kb;
+            }
+            _ => {}
+        }
+    }
+    let memory_used = memory_total - memory_available;
+    let swap_used = swap_total - swap_free;
+
+    MemoryStat {
+        memory_total,
+        memory_used,
+        memory_free,
+        memory_cache,
+        memory_buffers,
+        memory_dirty,
+        memory_writeback,
+        memory_usage: memory_used as f64 / memory_total as f64,
+        swap_total,
+        swap_used,
+        swap_usage: swap_used as f64 / swap_total as f64,
     }
 }
 
