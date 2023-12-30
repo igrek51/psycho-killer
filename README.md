@@ -1,3 +1,3 @@
 # 😵‍💫 PSycho KILLer
 
-Process finder and killer for Linux.
+Interactive process killer, manager and system resources monitor
