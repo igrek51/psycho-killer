@@ -40,11 +40,11 @@ fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
     }
 }
 
-fn render_right(_app: &mut App, frame: &mut Frame, area: Rect) {
-    let widget = Paragraph::new(format!(""))
+fn render_right(app: &mut App, frame: &mut Frame, area: Rect) {
+    let widget = Paragraph::new(app.format_sys_stats())
         .block(
             Block::default()
-                .title("System Resources")
+                .title("System")
                 .title_alignment(Alignment::Center)
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
@@ -56,9 +56,9 @@ fn render_right(_app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
-    let widget = Paragraph::new(format!(
+    let widget = Paragraph::new(
         "Press `Esc`, `Ctrl-C` or `q` to exit. `/` to filter processes. `r` to refresh. `Enter` to confirm selection"
-    ))
+    )
     .block(
         Block::default()
             .title("PSycho KILLer")
@@ -102,7 +102,7 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
     let list_items: Vec<ListItem> = app
         .filtered_processes
         .iter()
-        .map(|it: &ProcessStat| ListItem::new(format!("[{}] {}", it.pid, it.display_name)))
+        .map(|it: &ProcessStat| ListItem::new(it.display()))
         .collect();
     let mut list_state = ListState::default().with_selected(Some(app.process_cursor));
     let widget = List::new(list_items)

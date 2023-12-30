@@ -32,7 +32,8 @@ pub fn generate_knwon_signals() -> Vec<KillSignal> {
 }
 
 pub fn kill_pid(pid: &String, signal: &KillSignal) {
-    let cmd = format!("{}{}", signal.command, pid);
+    let command = signal.command;
+    let cmd = format!("{command}{pid}");
     Command::new("sh")
         .arg("-c")
         .arg(cmd)

@@ -5,7 +5,7 @@ use sysinfo::{NetworkExt, ProcessExt, System, SystemExt, Uid};
 pub const PRINT_SYS_STATS: bool = false;
 
 #[derive(Debug, Default)]
-pub struct SystemStats {
+pub struct SystemProcStats {
     pub processes: Vec<ProcessStat>,
 }
 
@@ -25,7 +25,41 @@ pub struct ProcessStat {
     pub run_time: u64,
 }
 
-pub fn get_system_stats() -> SystemStats {
+impl ProcessStat {
+    pub fn display(&self) -> String {
+        format!("[{}] {}", self.pid, self.display_name)
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct SystemStat {
+    pub os_version: String,
+    pub host_name: String,
+
+    pub cpu_num: usize,
+    pub cpu_usage: f64,
+
+    pub memory_total: u64,
+    pub memory_used: u64,
+    pub memory_free: u64,
+    pub memory_cache: u64,
+    pub memory_buffers: u64,
+    pub memory_usage: f64,
+    pub memory_dirty: u64,
+    pub memory_writeback: u64,
+
+    pub swap_total: u64,
+    pub swap_used: u64,
+    pub swap_usage: f64,
+
+    pub disk_space_usage: f64,
+    pub disk_io_usage: f64,
+
+    pub network_transfer_tx: u64,
+    pub network_transfer_rx: u64,
+}
+
+pub fn get_proc_stats() -> SystemProcStats {
     let mut sys = System::new_all();
     sys.refresh_all();
 
@@ -53,7 +87,23 @@ pub fn get_system_stats() -> SystemStats {
         processes.push(process_stat);
     }
 
-    SystemStats { processes }
+    SystemProcStats { processes }
+}
+
+pub fn get_system_stats() -> SystemStat {
+    let mut sys = System::new_all();
+    sys.refresh_all();
+
+    let os_version = sys.long_os_version().unwrap_or(String::new());
+    let host_name = sys.host_name().unwrap_or(String::new());
+    let cpu_num = sys.cpus().len();
+
+    SystemStat {
+        os_version,
+        host_name,
+        cpu_num,
+        ..SystemStat::default()
+    }
 }
 
 pub fn show_statistics() {

@@ -1,7 +1,8 @@
 use crate::appdata::WindowPhase;
 use crate::kill::{generate_knwon_signals, kill_pid, KillSignal};
 use crate::sysinfo::{
-    get_system_stats, show_statistics, ProcessStat, SystemStats, PRINT_SYS_STATS,
+    get_proc_stats, get_system_stats, show_statistics, ProcessStat, SystemProcStats, SystemStat,
+    PRINT_SYS_STATS,
 };
 
 #[derive(Debug, Default)]
@@ -9,7 +10,8 @@ pub struct App {
     pub should_quit: bool,
     pub window_phase: WindowPhase,
     pub process_cursor: usize,
-    pub system_stats: SystemStats,
+    pub proc_stats: SystemProcStats,
+    pub sys_stat: SystemStat,
     pub filter_text: String,
     pub filtered_processes: Vec<ProcessStat>,
     pub signal_cursor: usize,
@@ -29,14 +31,21 @@ impl App {
             show_statistics();
         }
         self.refresh_processes();
+        self.refresh_system_stats();
     }
 
     pub fn refresh_processes(&mut self) {
-        self.system_stats = get_system_stats();
+        self.proc_stats = get_proc_stats();
         self.filter_processes();
     }
 
-    pub fn tick(&self) {}
+    pub fn refresh_system_stats(&mut self) {
+        self.sys_stat = get_system_stats();
+    }
+
+    pub fn tick(&mut self) {
+        self.refresh_system_stats();
+    }
 
     pub fn quit(&mut self) {
         self.should_quit = true;
@@ -64,7 +73,7 @@ impl App {
             .map(|it| it.to_lowercase())
             .collect();
         self.filtered_processes = self
-            .system_stats
+            .proc_stats
             .processes
             .iter()
             .filter(|it: &&ProcessStat| contains_all_words(it.display_name.as_str(), &filter_words))
@@ -90,6 +99,19 @@ impl App {
 
         self.window_phase = WindowPhase::ProcessFilter;
         self.refresh_processes();
+    }
+
+    pub fn format_sys_stats(&self) -> String {
+        format!(
+            "
+OS: {}
+Host: {}
+CPU cores: {}
+",
+            self.sys_stat.os_version, self.sys_stat.host_name, self.sys_stat.cpu_num,
+        )
+        .trim()
+        .to_string()
     }
 }
 
