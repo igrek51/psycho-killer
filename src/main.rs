@@ -1,4 +1,5 @@
 mod app;
+mod appdata;
 mod event;
 mod kill;
 mod sysinfo;

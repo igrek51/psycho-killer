@@ -1,15 +1,15 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::app::App;
+use crate::{app::App, appdata::WindowPhase};
 
 pub fn update(app: &mut App, key_event: KeyEvent) {
     match key_event.code {
         KeyCode::Esc => match app.window_phase {
-            crate::app::WindowPhase::ProcessPick => {
+            WindowPhase::ProcessPick => {
                 app.quit();
             }
-            crate::app::WindowPhase::SignalPick => {
-                app.window_phase = crate::app::WindowPhase::ProcessPick;
+            WindowPhase::SignalPick => {
+                app.window_phase = WindowPhase::ProcessPick;
             }
         },
         KeyCode::Char('c') | KeyCode::Char('C') if key_event.modifiers == KeyModifiers::CONTROL => {
@@ -26,10 +26,10 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
             app.filter_processes();
         }
         KeyCode::Enter => match app.window_phase {
-            crate::app::WindowPhase::ProcessPick => {
+            WindowPhase::ProcessPick => {
                 app.confirm_process();
             }
-            crate::app::WindowPhase::SignalPick => {
+            WindowPhase::SignalPick => {
                 app.confirm_signal();
             }
         },

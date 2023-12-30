@@ -1,5 +1,6 @@
-use crate::kill::{kill_pid, KillSignal, generate_signals};
-use crate::sysinfo::{get_system_stats, ProcessStat, SystemStats};
+use crate::appdata::WindowPhase;
+use crate::kill::{generate_signals, kill_pid, KillSignal};
+use crate::sysinfo::{get_system_stats, show_statistics, ProcessStat, SystemStats};
 
 #[derive(Debug, Default)]
 pub struct App {
@@ -13,17 +14,7 @@ pub struct App {
     pub known_signals: Vec<KillSignal>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum WindowPhase {
-    ProcessPick,
-    SignalPick,
-}
-
-impl Default for WindowPhase {
-    fn default() -> Self {
-        WindowPhase::ProcessPick
-    }
-}
+const PRINT_SYS_STATS: bool = false;
 
 impl App {
     pub fn new() -> Self {
@@ -35,6 +26,9 @@ impl App {
     }
 
     pub fn startup(&mut self) {
+        if PRINT_SYS_STATS {
+            show_statistics();
+        }
         self.system_stats = get_system_stats();
         self.filter_processes();
     }

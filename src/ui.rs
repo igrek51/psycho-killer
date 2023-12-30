@@ -6,7 +6,7 @@ use ratatui::{
 };
 
 use crate::app::App;
-use crate::app::WindowPhase;
+use crate::appdata::WindowPhase;
 use crate::kill::KillSignal;
 use crate::sysinfo::ProcessStat;
 
@@ -80,7 +80,8 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_signal_panel(app: &mut App, frame: &mut Frame) {
-    let list_items: Vec<ListItem> = app.known_signals
+    let list_items: Vec<ListItem> = app
+        .known_signals
         .iter()
         .map(|it: &KillSignal| ListItem::new(it.name))
         .collect();
