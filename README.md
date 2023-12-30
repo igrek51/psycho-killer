@@ -1,6 +1,6 @@
 # 😵‍💫 PSycho KILLer
 
-Interactive process killer, manager and system resources monitor. Does `ps` + `kill`.
+PSycho KILLer is an interactive process manager and system resource monitor that combines the functionalities of `ps` and `kill`.
 
 <div align="center">
     <a href="https://github.com/igrek51/psycho-killer">GitHub</a>
@@ -11,26 +11,25 @@ Interactive process killer, manager and system resources monitor. Does `ps` + `k
 </div>
 
 ## Features
-- Find and kill process quickly in an interactive way
-- Kill process with sudo privileges, if it stays alive
-- Monitor system resources usage
+- Quickly find and terminate processes in an interactive manner.
+- If a process remains active, kill it with sudo privileges.
+- Monitor system resource usage, including `Dirty` and `Writeback` memory to keep an eye on ongoing copying.
 
 ## Installation
-Install Rust and then:
 ```sh
 cargo install psycho-killer
 ```
 This will install `psycho` binary in Rust's Path.
 
 ## Usage
-Run `psycho` to start interactive process manager.
+Launch the interactive process manager by running `psycho`.
 
-Enter name of a process you want to kill.
+Enter the phrase of a process you want to kill.
 
-Select how to kill the process:
+Choose the preferred method to terminate the process:
 
 - Interrupt with `SIGINT` signal
-- Terminate process gracefully with `SIGTERM`
-- Kill process with `SIGKILL` signal
-- Kill process with `SIGTERM` signal as Superuser
-- Kill process with `SIGKILL` signal as Superuser
+- Gracefully terminate the process with `SIGTERM`
+- Forcefully kill the process with `SIGKILL` signal
+- Terminate the process with `SIGTERM` signal as Superuser
+- Forcefully kill the process with `SIGKILL` signal as Superuser
