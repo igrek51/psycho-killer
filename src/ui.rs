@@ -9,6 +9,7 @@ use crate::app::App;
 use crate::appdata::WindowPhase;
 use crate::kill::KillSignal;
 use crate::numbers::PercentFormatterExt;
+use crate::strings::apply_scroll;
 use crate::sysinfo::ProcessStat;
 
 pub fn render(app: &mut App, frame: &mut Frame) {
@@ -105,17 +106,24 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
         .map(|it: &ProcessStat| {
             Row::new(vec![
                 format!("[{}]", it.pid),
-                it.display_name.clone(),
+                apply_scroll(&it.display_name, app.horizontal_scroll),
                 it.cpu_usage.format_percent_0(),
                 it.memory_usage.format_percent_1(),
             ])
         })
         .collect();
+    let col_pid_length: u16 = app
+        .filtered_processes
+        .iter()
+        .map(|it| it.pid.to_string().len())
+        .max()
+        .unwrap_or(0) as u16
+        + 2;
     let widths = [
-        Constraint::Percentage(5),
-        Constraint::Percentage(75),
-        Constraint::Percentage(10),
-        Constraint::Percentage(10),
+        Constraint::Length(col_pid_length),
+        Constraint::Min(area.width - col_pid_length - 5 - 5 - 3 - 2 - 2), // -3 for padding, -2 for cursor, -2 for borders
+        Constraint::Max(5),
+        Constraint::Max(5),
     ];
     let table = Table::new(rows, widths)
         .column_spacing(1)

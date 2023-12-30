@@ -1,5 +1,5 @@
 run:
-	cargo run
+	RUST_BACKTRACE=1 cargo run
 
 build:
 	cargo build --release

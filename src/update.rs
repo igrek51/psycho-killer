@@ -20,6 +20,14 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
         }
         KeyCode::Down => app.move_cursor(1),
         KeyCode::Up => app.move_cursor(-1),
+        KeyCode::Left => {
+            app.move_horizontal_scroll(-10);
+        }
+        KeyCode::Right => {
+            app.move_horizontal_scroll(10);
+        }
+        KeyCode::PageDown => app.move_cursor(10),
+        KeyCode::PageUp => app.move_cursor(-10),
         KeyCode::Char('u')
             if key_event.modifiers == KeyModifiers::CONTROL
                 && app.window_phase == ProcessFilter =>

@@ -20,6 +20,7 @@ pub struct App {
     pub signal_cursor: usize,
     pub known_signals: Vec<KillSignal>,
     pub proc_list_table_state: TableState,
+    pub horizontal_scroll: i32,
 }
 
 impl App {
@@ -69,6 +70,12 @@ impl App {
             }
         }
         self.proc_list_table_state.select(Some(self.process_cursor));
+    }
+
+    pub fn move_horizontal_scroll(&mut self, delta: i32) {
+        let mut new_value = self.horizontal_scroll + delta;
+        new_value = new_value.max(0);
+        self.horizontal_scroll = new_value;
     }
 
     pub fn filter_processes(&mut self) {

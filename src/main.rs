@@ -3,6 +3,7 @@ mod appdata;
 mod event;
 mod kill;
 mod numbers;
+mod strings;
 mod sysinfo;
 mod tui;
 mod ui;
