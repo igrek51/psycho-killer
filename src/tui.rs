@@ -59,7 +59,7 @@ impl Tui {
 
     pub fn handle_events(&mut self, app: &mut App) -> Result<()> {
         match self.events.next()? {
-            Event::Tick => {}
+            Event::Tick => app.tick(),
             Event::Key(key_event) => update(app, key_event),
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
