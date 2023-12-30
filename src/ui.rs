@@ -44,6 +44,7 @@ fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
 
 fn render_right(app: &mut App, frame: &mut Frame, area: Rect) {
     let widget = Paragraph::new(app.format_sys_stats())
+        .wrap(Wrap { trim: true })
         .block(
             Block::default()
                 .title("System")
@@ -59,7 +60,7 @@ fn render_right(app: &mut App, frame: &mut Frame, area: Rect) {
 
 fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
     let widget = Paragraph::new(
-        "Press `Esc`, `Ctrl-C` or `q` to exit. `/` to filter processes. `F5` to refresh. `Enter` to confirm selection"
+        "Press `Esc`, `Ctrl-C` or `q` to exit. `/` to filter processes. `F5` to refresh. `Enter` to confirm selection."
     )
     .block(
         Block::default()
