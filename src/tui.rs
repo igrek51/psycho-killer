@@ -42,7 +42,6 @@ impl Tui {
             panic_hook(panic);
         }));
 
-        self.terminal.hide_cursor()?;
         self.terminal.clear()?;
         Ok(())
     }
@@ -83,7 +82,6 @@ impl Tui {
     /// It disables the raw mode and reverts back the terminal properties.
     pub fn exit(&mut self) -> Result<()> {
         Self::reset()?;
-        self.terminal.show_cursor()?;
         Ok(())
     }
 }
