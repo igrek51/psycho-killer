@@ -19,7 +19,6 @@ pub struct Tui {
 }
 
 impl Tui {
-    /// Constructs a new instance of [`Tui`].
     pub fn new() -> Self {
         let backend = CrosstermBackend::new(std::io::stderr());
         let terminal: CrosstermTerminal = Terminal::new(backend).unwrap();
@@ -46,10 +45,6 @@ impl Tui {
         Ok(())
     }
 
-    /// [`Draw`] the terminal interface by [`rendering`] the widgets.
-    ///
-    /// [`Draw`]: tui::Terminal::draw
-    /// [`rendering`]: crate::ui:render
     pub fn draw(&mut self, app: &mut App) -> Result<()> {
         self.terminal
             .draw(|frame| ui::render(app, frame))

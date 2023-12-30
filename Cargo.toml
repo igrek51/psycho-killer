@@ -4,6 +4,9 @@ version = "0.1.0"
 license = "MIT"
 edition = "2021"
 description = "Interactive process killer, manager and system resources monitor"
+repository = "https://github.com/igrek51/psycho-killer"
+homepage = "https://github.com/igrek51/psycho-killer"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
