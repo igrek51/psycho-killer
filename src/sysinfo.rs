@@ -78,7 +78,7 @@ pub fn get_proc_stats() -> SystemProcStats {
             name: proc_name,
             cmd,
             exe: process.exe().to_string_lossy().to_string(),
-            cpu_usage: process.cpu_usage(),
+            cpu_usage: process.cpu_usage() / 100f32,
             memory_usage: process.memory() as f64,
             user_id,
             display_name,

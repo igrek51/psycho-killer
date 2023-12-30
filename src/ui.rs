@@ -73,10 +73,9 @@ fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_filter_panel(app: &mut App, frame: &mut Frame, area: Rect) {
-    // print rectangle cursor character
     let p_text = match app.window_phase {
         WindowPhase::Browse => app.filter_text.clone(),
-        WindowPhase::ProcessFilter => format!("{}\u{2588}", app.filter_text),
+        WindowPhase::ProcessFilter => format!("{}\u{2588}", app.filter_text), // cursor block
         WindowPhase::SignalPick => app.filter_text.clone(),
     };
     let panel_color = match app.window_phase {
@@ -99,13 +98,32 @@ fn render_filter_panel(app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
-    let list_items: Vec<ListItem> = app
+    let mut table_state = TableState::default().with_selected(Some(app.process_cursor));
+    let rows: Vec<Row> = app
         .filtered_processes
         .iter()
-        .map(|it: &ProcessStat| ListItem::new(it.display()))
+        .map(|it: &ProcessStat| {
+            Row::new(vec![
+                format!("[{}]", it.pid),
+                it.display_name.clone(),
+                format!("{:.1}%", it.cpu_usage * 100f32),
+                format!("{:.1}%", it.memory_usage),
+            ])
+        })
         .collect();
-    let mut list_state = ListState::default().with_selected(Some(app.process_cursor));
-    let widget = List::new(list_items)
+    let widths = [
+        Constraint::Percentage(5),
+        Constraint::Percentage(75),
+        Constraint::Percentage(10),
+        Constraint::Percentage(10),
+    ];
+    let table = Table::new(rows, widths)
+        .column_spacing(1)
+        .header(
+            Row::new(vec!["PID", "Name", "CPU", "MEM"])
+                .style(Style::new().bold())
+                .bottom_margin(1),
+        )
         .block(
             Block::default()
                 .title("Running Processes")
@@ -113,9 +131,9 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
         )
         .style(Style::default().fg(Color::White))
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
-        .highlight_symbol(">> ");
+        .highlight_symbol(">>");
 
-    frame.render_stateful_widget(widget, area, &mut list_state);
+    frame.render_stateful_widget(table, area, &mut table_state);
 }
 
 fn render_signal_panel(app: &mut App, frame: &mut Frame) {
