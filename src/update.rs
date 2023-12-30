@@ -20,12 +20,19 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
         }
         KeyCode::Down => app.move_cursor(1),
         KeyCode::Up => app.move_cursor(-1),
-        KeyCode::Char(c) if app.window_phase == ProcessFilter => {
-            app.filter_text.push(c);
+        KeyCode::Char('u')
+            if key_event.modifiers == KeyModifiers::CONTROL
+                && app.window_phase == ProcessFilter =>
+        {
+            app.filter_text.clear();
             app.filter_processes();
         }
         KeyCode::Backspace if app.window_phase == ProcessFilter => {
             app.filter_text.pop();
+            app.filter_processes();
+        }
+        KeyCode::Char(c) if app.window_phase == ProcessFilter => {
+            app.filter_text.push(c);
             app.filter_processes();
         }
         KeyCode::Char('/') if app.window_phase == Browse => {
