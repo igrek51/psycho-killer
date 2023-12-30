@@ -11,14 +11,25 @@ use crate::kill::KillSignal;
 use crate::sysinfo::ProcessStat;
 
 pub fn render(app: &mut App, frame: &mut Frame) {
+    let area = frame.size();
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(vec![Constraint::Percentage(80), Constraint::Percentage(20)])
+        .split(area);
+
+    render_left(app, frame, layout[0]);
+    render_right(app, frame, layout[1]);
+}
+
+fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints(vec![
             Constraint::Max(3),
             Constraint::Max(3),
-            Constraint::Percentage(80),
+            Constraint::Min(5),
         ])
-        .split(frame.size());
+        .split(area);
 
     render_info_pane(app, frame, layout[0]);
     render_filter_pane(app, frame, layout[1]);
@@ -29,8 +40,23 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
 }
 
+fn render_right(_app: &mut App, frame: &mut Frame, area: Rect) {
+    let widget = Paragraph::new(format!(""))
+        .block(
+            Block::default()
+                .title("System Resources")
+                .title_alignment(Alignment::Center)
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded),
+        )
+        .style(Style::default().fg(Color::Yellow))
+        .alignment(Alignment::Left);
+
+    frame.render_widget(widget, area);
+}
+
 fn render_info_pane(_app: &mut App, frame: &mut Frame, area: Rect) {
-    let widget = Paragraph::new(format!("Press `Esc`, `Ctrl-C` or `q` to exit.\n"))
+    let widget = Paragraph::new(format!("Press `Esc` or `Ctrl-C` to exit.\n"))
         .block(
             Block::default()
                 .title("PSycho KILLer")
@@ -38,7 +64,7 @@ fn render_info_pane(_app: &mut App, frame: &mut Frame, area: Rect) {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
         )
-        .style(Style::default().fg(Color::Red))
+        .style(Style::default().fg(Color::LightRed))
         .alignment(Alignment::Center);
 
     frame.render_widget(widget, area);
@@ -53,7 +79,7 @@ fn render_filter_pane(app: &mut App, frame: &mut Frame, area: Rect) {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
         )
-        .style(Style::default().fg(Color::Yellow))
+        .style(Style::default().fg(Color::LightYellow))
         .alignment(Alignment::Left);
 
     frame.render_widget(widget, area);
