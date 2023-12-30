@@ -28,6 +28,10 @@ impl App {
         if PRINT_SYS_STATS {
             show_statistics();
         }
+        self.refresh_processes();
+    }
+
+    pub fn refresh_processes(&mut self) {
         self.system_stats = get_system_stats();
         self.filter_processes();
     }
@@ -81,7 +85,6 @@ impl App {
         kill_pid(&process.pid, signal);
 
         self.window_phase = WindowPhase::ProcessFilter;
-        self.system_stats = get_system_stats();
-        self.filter_processes();
+        self.refresh_processes();
     }
 }

@@ -57,7 +57,7 @@ fn render_right(_app: &mut App, frame: &mut Frame, area: Rect) {
 
 fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
     let widget = Paragraph::new(format!(
-        "Press `Esc` or `Ctrl-C` to exit. `/` to filter processes.\n"
+        "Press `Esc`, `Ctrl-C` or `q` to exit. `/` to filter processes. `r` to refresh. `Enter` to confirm selection"
     ))
     .block(
         Block::default()

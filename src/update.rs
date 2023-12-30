@@ -34,6 +34,9 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
         KeyCode::Char('q') if app.window_phase == Browse => {
             app.quit();
         }
+        KeyCode::Char('r') if app.window_phase == Browse => {
+            app.refresh_processes();
+        }
         KeyCode::Enter => match app.window_phase {
             Browse | ProcessFilter => {
                 app.confirm_process();
