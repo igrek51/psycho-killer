@@ -2,6 +2,8 @@ use std::ops::Deref;
 
 use sysinfo::{NetworkExt, ProcessExt, System, SystemExt, Uid};
 
+pub const PRINT_SYS_STATS: bool = false;
+
 #[derive(Debug, Default)]
 pub struct SystemStats {
     pub processes: Vec<ProcessStat>,

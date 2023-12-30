@@ -1,6 +1,8 @@
 use crate::appdata::WindowPhase;
 use crate::kill::{generate_knwon_signals, kill_pid, KillSignal};
-use crate::sysinfo::{get_system_stats, show_statistics, ProcessStat, SystemStats};
+use crate::sysinfo::{
+    get_system_stats, show_statistics, ProcessStat, SystemStats, PRINT_SYS_STATS,
+};
 
 #[derive(Debug, Default)]
 pub struct App {
@@ -13,8 +15,6 @@ pub struct App {
     pub signal_cursor: usize,
     pub known_signals: Vec<KillSignal>,
 }
-
-const PRINT_SYS_STATS: bool = false;
 
 impl App {
     pub fn new() -> Self {
@@ -58,12 +58,16 @@ impl App {
     }
 
     pub fn filter_processes(&mut self) {
-        let filter_text = self.filter_text.to_lowercase();
+        let filter_words: Vec<String> = self
+            .filter_text
+            .split_whitespace()
+            .map(|it| it.to_lowercase())
+            .collect();
         self.filtered_processes = self
             .system_stats
             .processes
             .iter()
-            .filter(|it: &&ProcessStat| it.display_name.to_lowercase().contains(&filter_text))
+            .filter(|it: &&ProcessStat| contains_all_words(it.display_name.as_str(), &filter_words))
             .cloned()
             .collect();
         self.filtered_processes
@@ -87,4 +91,9 @@ impl App {
         self.window_phase = WindowPhase::ProcessFilter;
         self.refresh_processes();
     }
+}
+
+pub fn contains_all_words(text: &str, words: &Vec<String>) -> bool {
+    let lower_text = text.to_lowercase();
+    words.iter().all(|it| lower_text.contains(it))
 }
