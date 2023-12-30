@@ -37,6 +37,9 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
         KeyCode::Char('r') if app.window_phase == Browse => {
             app.refresh_processes();
         }
+        KeyCode::F(5) => {
+            app.refresh_processes();
+        }
         KeyCode::Char('j') if app.window_phase == SignalPick => {
             app.move_cursor(1);
         }

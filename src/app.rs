@@ -1,3 +1,5 @@
+use ratatui::widgets::TableState;
+
 use crate::appdata::WindowPhase;
 use crate::kill::{generate_knwon_signals, kill_pid, KillSignal};
 use crate::numbers::{BytesFormatterExt, PercentFormatterExt};
@@ -17,6 +19,7 @@ pub struct App {
     pub filtered_processes: Vec<ProcessStat>,
     pub signal_cursor: usize,
     pub known_signals: Vec<KillSignal>,
+    pub proc_list_table_state: TableState,
 }
 
 impl App {
@@ -65,6 +68,7 @@ impl App {
                 self.signal_cursor = new_index as usize;
             }
         }
+        self.proc_list_table_state.select(Some(self.process_cursor));
     }
 
     pub fn filter_processes(&mut self) {

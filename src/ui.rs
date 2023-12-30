@@ -57,7 +57,7 @@ fn render_right(app: &mut App, frame: &mut Frame, area: Rect) {
 
 fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
     let widget = Paragraph::new(
-        "Press `Esc`, `Ctrl-C` or `q` to exit. `/` to filter processes. `r` to refresh. `Enter` to confirm selection"
+        "Press `Esc`, `Ctrl-C` or `q` to exit. `/` to filter processes. `F5` to refresh. `Enter` to confirm selection"
     )
     .block(
         Block::default()
@@ -98,7 +98,6 @@ fn render_filter_panel(app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
-    let mut table_state = TableState::default().with_selected(Some(app.process_cursor));
     let rows: Vec<Row> = app
         .filtered_processes
         .iter()
@@ -133,7 +132,7 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">>");
 
-    frame.render_stateful_widget(table, area, &mut table_state);
+    frame.render_stateful_widget(table, area, &mut app.proc_list_table_state);
 }
 
 fn render_signal_panel(app: &mut App, frame: &mut Frame) {
