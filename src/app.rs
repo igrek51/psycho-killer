@@ -1,5 +1,5 @@
 use crate::appdata::WindowPhase;
-use crate::kill::{generate_signals, kill_pid, KillSignal};
+use crate::kill::{generate_knwon_signals, kill_pid, KillSignal};
 use crate::sysinfo::{get_system_stats, show_statistics, ProcessStat, SystemStats};
 
 #[derive(Debug, Default)]
@@ -20,7 +20,7 @@ impl App {
     pub fn new() -> Self {
         Self {
             window_phase: WindowPhase::ProcessPick,
-            known_signals: generate_signals(),
+            known_signals: generate_knwon_signals(),
             ..Self::default()
         }
     }

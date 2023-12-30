@@ -6,22 +6,26 @@ pub struct KillSignal {
     pub command: &'static str,
 }
 
-pub fn generate_signals() -> Vec<KillSignal> {
+pub fn generate_knwon_signals() -> Vec<KillSignal> {
     vec![
         KillSignal {
-            name: "SIGINT (2) - interrupt",
+            name: "Interrupt: kill -2",
             command: "kill -2 ",
         },
         KillSignal {
-            name: "SIGTERM (15) - graceful shutdown",
+            name: "Terminate (gracefully): kill -15",
             command: "kill -15 ",
         },
         KillSignal {
-            name: "SIGKILL (9) - kill",
+            name: "Kill process: kill -9",
             command: "kill -9 ",
         },
         KillSignal {
-            name: "sudo SIGKILL (9)",
+            name: "Superuser Terminate: sudo kill -15",
+            command: "sudo kill -15 ",
+        },
+        KillSignal {
+            name: "Superuser Kill: sudo kill -9",
             command: "sudo kill -9 ",
         },
     ]

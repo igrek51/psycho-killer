@@ -97,29 +97,37 @@ fn render_signal_panel(app: &mut App, frame: &mut Frame) {
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">> ");
 
-    let area = centered_rect(40, 6, frame.size());
+    let height = app.known_signals.len() as u16 + 2;
+    let width: u16 = app
+        .known_signals
+        .iter()
+        .map(|it: &KillSignal| it.name.len() as u16)
+        .max()
+        .unwrap_or(0)
+        + 8;
+    let area = centered_rect(width, height, frame.size());
     let buffer = frame.buffer_mut();
     Clear.render(area, buffer);
     frame.render_stateful_widget(widget, area, &mut list_state);
 }
 
-fn centered_rect(x: u16, y: u16, r: Rect) -> Rect {
-    let x_gap = (r.width as i16 - x as i16).max(0) / 2;
-    let y_gap = (r.height as i16 - y as i16).max(0) / 2;
+fn centered_rect(w: u16, h: u16, r: Rect) -> Rect {
+    let x_gap = (r.width as i16 - w as i16).max(0) / 2;
+    let y_gap = (r.height as i16 - h as i16).max(0) / 2;
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(y_gap as u16),
-            Constraint::Min(y),
-            Constraint::Length(y_gap as u16),
+            Constraint::Min(y_gap as u16),
+            Constraint::Length(h),
+            Constraint::Min(y_gap as u16),
         ])
         .split(r);
     Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Max(x_gap as u16),
-            Constraint::Min(x),
-            Constraint::Max(x_gap as u16),
+            Constraint::Min(x_gap as u16),
+            Constraint::Length(w),
+            Constraint::Min(x_gap as u16),
         ])
         .split(popup_layout[1])[1]
 }
