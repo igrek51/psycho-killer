@@ -8,6 +8,7 @@ use ratatui::{
 use crate::app::App;
 use crate::appdata::WindowPhase;
 use crate::kill::KillSignal;
+use crate::numbers::PercentFormatterExt;
 use crate::sysinfo::ProcessStat;
 
 pub fn render(app: &mut App, frame: &mut Frame) {
@@ -105,8 +106,8 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
             Row::new(vec![
                 format!("[{}]", it.pid),
                 it.display_name.clone(),
-                format!("{:.1}%", it.cpu_usage * 100f32),
-                format!("{:.1}%", it.memory_usage),
+                it.cpu_usage.format_percent_0(),
+                it.memory_usage.format_percent_1(),
             ])
         })
         .collect();

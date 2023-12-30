@@ -21,10 +21,18 @@ impl BytesFormatterExt for u64 {
 
 pub trait PercentFormatterExt {
     fn format_percent(&self) -> String;
+    fn format_percent_0(&self) -> String;
+    fn format_percent_1(&self) -> String;
 }
 
 impl PercentFormatterExt for f64 {
     fn format_percent(&self) -> String {
         format!("{:.2}%", *self * 100f64)
+    }
+    fn format_percent_0(&self) -> String {
+        format!("{:.0}%", *self * 100f64)
+    }
+    fn format_percent_1(&self) -> String {
+        format!("{:.1}%", *self * 100f64)
     }
 }

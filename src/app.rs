@@ -34,17 +34,17 @@ impl App {
         if PRINT_SYS_STATS {
             show_statistics();
         }
-        self.refresh_processes();
         self.refresh_system_stats();
-    }
-
-    pub fn refresh_processes(&mut self) {
-        self.proc_stats = get_proc_stats();
-        self.filter_processes();
+        self.refresh_processes();
     }
 
     pub fn refresh_system_stats(&mut self) {
         self.sys_stat = get_system_stats();
+    }
+
+    pub fn refresh_processes(&mut self) {
+        self.proc_stats = get_proc_stats(&self.sys_stat.memory);
+        self.filter_processes();
     }
 
     pub fn tick(&mut self) {

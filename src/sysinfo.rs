@@ -19,8 +19,8 @@ pub struct ProcessStat {
     pub cmd: String,
     // Full executable path: /opt/google/chrome/chrome
     pub exe: String,
-    pub cpu_usage: f32,
-    pub memory_usage: f64,
+    pub cpu_usage: f64,    // fraction of 1 core
+    pub memory_usage: f64, // fraction of total memory
     pub user_id: Option<u32>,
     pub display_name: String,
     pub run_time: u64,
@@ -59,7 +59,7 @@ pub struct MemoryStat {
     pub swap_usage: f64,
 }
 
-pub fn get_proc_stats() -> SystemProcStats {
+pub fn get_proc_stats(memstat: &MemoryStat) -> SystemProcStats {
     let mut sys = System::new_all();
     sys.refresh_all();
 
@@ -72,14 +72,15 @@ pub fn get_proc_stats() -> SystemProcStats {
             false => cmd.clone(),
             _ => proc_name.clone(),
         };
+        let mem_usage_fraction: f64 = process.memory() as f64 / 1024f64 / memstat.total as f64;
 
         let process_stat = ProcessStat {
             pid: pid.to_string(),
             name: proc_name,
             cmd,
             exe: process.exe().to_string_lossy().to_string(),
-            cpu_usage: process.cpu_usage() / 100f32,
-            memory_usage: process.memory() as f64,
+            cpu_usage: process.cpu_usage() as f64 / 100f64,
+            memory_usage: mem_usage_fraction,
             user_id,
             display_name,
             run_time: process.run_time(),
