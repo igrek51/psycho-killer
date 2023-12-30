@@ -31,8 +31,8 @@ fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
         ])
         .split(area);
 
-    render_info_pane(app, frame, layout[0]);
-    render_filter_pane(app, frame, layout[1]);
+    render_info_panel(app, frame, layout[0]);
+    render_filter_panel(app, frame, layout[1]);
     render_proc_list(app, frame, layout[2]);
 
     if app.window_phase == WindowPhase::SignalPick {
@@ -55,23 +55,36 @@ fn render_right(_app: &mut App, frame: &mut Frame, area: Rect) {
     frame.render_widget(widget, area);
 }
 
-fn render_info_pane(_app: &mut App, frame: &mut Frame, area: Rect) {
-    let widget = Paragraph::new(format!("Press `Esc` or `Ctrl-C` to exit.\n"))
-        .block(
-            Block::default()
-                .title("PSycho KILLer")
-                .title_alignment(Alignment::Center)
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded),
-        )
-        .style(Style::default().fg(Color::LightRed))
-        .alignment(Alignment::Center);
+fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
+    let widget = Paragraph::new(format!(
+        "Press `Esc` or `Ctrl-C` to exit. `/` to filter processes.\n"
+    ))
+    .block(
+        Block::default()
+            .title("PSycho KILLer")
+            .title_alignment(Alignment::Center)
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded),
+    )
+    .style(Style::default().fg(Color::LightRed))
+    .alignment(Alignment::Center);
 
     frame.render_widget(widget, area);
 }
 
-fn render_filter_pane(app: &mut App, frame: &mut Frame, area: Rect) {
-    let widget = Paragraph::new(format!("{}", app.filter_text))
+fn render_filter_panel(app: &mut App, frame: &mut Frame, area: Rect) {
+    // print rectangle cursor character
+    let p_text = match app.window_phase {
+        WindowPhase::Browse => app.filter_text.clone(),
+        WindowPhase::ProcessFilter => format!("{}\u{2588}", app.filter_text),
+        WindowPhase::SignalPick => app.filter_text.clone(),
+    };
+    let panel_color = match app.window_phase {
+        WindowPhase::ProcessFilter => Color::LightYellow,
+        _ => Color::White,
+    };
+
+    let widget = Paragraph::new(p_text)
         .block(
             Block::default()
                 .title("Filter")
@@ -79,7 +92,7 @@ fn render_filter_pane(app: &mut App, frame: &mut Frame, area: Rect) {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
         )
-        .style(Style::default().fg(Color::LightYellow))
+        .style(Style::default().fg(panel_color))
         .alignment(Alignment::Left);
 
     frame.render_widget(widget, area);
@@ -115,7 +128,7 @@ fn render_signal_panel(app: &mut App, frame: &mut Frame) {
     let widget = List::new(list_items)
         .block(
             Block::default()
-                .title("KILL command")
+                .title("Kill command")
                 .borders(Borders::ALL)
                 .bg(Color::DarkGray),
         )

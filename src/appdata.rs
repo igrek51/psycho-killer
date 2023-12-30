@@ -1,11 +1,12 @@
 #[derive(Debug, PartialEq, Eq)]
 pub enum WindowPhase {
-    ProcessPick,
+    Browse,
+    ProcessFilter,
     SignalPick,
 }
 
 impl Default for WindowPhase {
     fn default() -> Self {
-        WindowPhase::ProcessPick
+        WindowPhase::ProcessFilter
     }
 }
