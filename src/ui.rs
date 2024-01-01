@@ -14,13 +14,13 @@ use crate::sysinfo::ProcessStat;
 
 pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.size();
-    let right_width = 44;
-    let rest_width = (area.width as i16 - right_width).max(3) as u16;
+    let r_width = 44;
+    let l_width = (area.width as i16 - r_width).max((area.width as f32 * 0.5) as i16) as u16;
     let layout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints(vec![
-            Constraint::Min(rest_width),
-            Constraint::Min(right_width as u16),
+            Constraint::Min(l_width),
+            Constraint::Min(r_width as u16),
         ])
         .split(area);
 
@@ -45,22 +45,6 @@ fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
     render_info_panel(app, frame, layout[0]);
     render_filter_panel(app, frame, layout[1]);
     render_proc_list(app, frame, layout[2]);
-}
-
-fn render_right(app: &mut App, frame: &mut Frame, area: Rect) {
-    let widget = Paragraph::new(app.format_sys_stats())
-        .wrap(Wrap { trim: true })
-        .block(
-            Block::default()
-                .title("System")
-                .title_alignment(Alignment::Center)
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded),
-        )
-        .style(Style::default().fg(Color::Yellow))
-        .alignment(Alignment::Left);
-
-    frame.render_widget(widget, area);
 }
 
 fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
@@ -151,6 +135,22 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
     frame.render_stateful_widget(table, area, &mut app.proc_list_table_state);
 }
 
+fn render_right(app: &mut App, frame: &mut Frame, area: Rect) {
+    let widget = Paragraph::new(app.format_sys_stats())
+        .wrap(Wrap { trim: true })
+        .block(
+            Block::default()
+                .title("System")
+                .title_alignment(Alignment::Center)
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded),
+        )
+        .style(Style::default().fg(Color::Yellow))
+        .alignment(Alignment::Left);
+
+    frame.render_widget(widget, area);
+}
+
 fn render_signal_panel(app: &mut App, frame: &mut Frame) {
     let list_items: Vec<ListItem> = app
         .known_signals
@@ -189,7 +189,7 @@ fn centered_rect(w: u16, h: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(y_gap as u16),
+            Constraint::Length(y_gap as u16),
             Constraint::Length(h),
             Constraint::Min(y_gap as u16),
         ])
@@ -197,7 +197,7 @@ fn centered_rect(w: u16, h: u16, r: Rect) -> Rect {
     Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Min(x_gap as u16),
+            Constraint::Length(x_gap as u16),
             Constraint::Length(w),
             Constraint::Min(x_gap as u16),
         ])
