@@ -111,8 +111,10 @@ pub fn get_system_stats() -> SystemStat {
 }
 
 pub fn read_memory_stats() -> MemoryStat {
-    let meminfo_content = std::fs::read_to_string("/proc/meminfo").unwrap_or(String::new());
-    let meminfo_lines: Vec<&str> = meminfo_content.split('\n').collect();
+    let meminfo_lines: Vec<String> = std::fs::read_to_string("/proc/meminfo").unwrap_or(String::new())
+        .split('\n')
+        .map(|x| x.to_string())
+        .collect();
 
     let mut memory_total: u64 = 0;
     let mut memory_free: u64 = 0;
