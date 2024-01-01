@@ -10,18 +10,11 @@ mod ui;
 mod update;
 
 use anyhow::Result;
-use app::App;
-use tui::Tui;
+
+use crate::app::App;
 
 fn main() -> Result<()> {
     let mut app = App::new();
-    app.startup();
-    let mut tui = Tui::new();
-    tui.enter()?;
-    while !app.should_quit {
-        tui.draw(&mut app)?;
-        tui.handle_events(&mut app)?;
-    }
-    tui.exit()?;
+    app.run()?;
     Ok(())
 }

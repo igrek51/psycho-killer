@@ -13,11 +13,11 @@ pub fn generate_knwon_signals() -> Vec<KillSignal> {
             command: "kill -2 ",
         },
         KillSignal {
-            name: "Terminate (gracefully): kill -15",
+            name: "Terminate gracefully: kill -15",
             command: "kill -15 ",
         },
         KillSignal {
-            name: "Kill process: kill -9",
+            name: "Kill forcefully: kill -9",
             command: "kill -9 ",
         },
         KillSignal {

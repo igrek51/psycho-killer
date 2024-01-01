@@ -12,9 +12,7 @@ use crate::{app::App, event::Event, event::EventHandler, ui, update::update};
 /// It is responsible for setting up the terminal,
 /// initializing the interface and handling the draw events.
 pub struct Tui {
-    /// Interface to the Terminal.
     terminal: CrosstermTerminal,
-    /// Terminal event handler.
     pub events: EventHandler,
 }
 

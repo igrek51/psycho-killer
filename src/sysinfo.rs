@@ -62,6 +62,12 @@ pub struct MemoryStat {
     pub swap_usage: f64,
 }
 
+impl MemoryStat {
+    pub fn dirty_writeback(&self) -> u64 {
+        self.dirty + self.writeback
+    }
+}
+
 pub fn get_proc_stats(memstat: &MemoryStat) -> SystemProcStats {
     let mut sys = System::new_all();
     sys.refresh_all();
@@ -259,8 +265,10 @@ impl SystemStat {
         ));
         lines.push(format!("Cache: {}", self.memory.cache.to_bytes()));
         lines.push(format!("Buffers: {}", self.memory.buffers.to_bytes()));
-        lines.push(format!("Dirty: {}", self.memory.dirty.to_bytes()));
-        lines.push(format!("Writeback: {}", self.memory.writeback.to_bytes()));
+        lines.push(format!(
+            "Dirty & Writeback: {}",
+            self.memory.dirty_writeback().to_bytes()
+        ));
 
         if self.memory.swap_total > 0 {
             lines.push(format!(

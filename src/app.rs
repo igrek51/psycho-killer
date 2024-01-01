@@ -1,4 +1,8 @@
+use anyhow::Result;
 use ratatui::widgets::TableState;
+use signal_hook::{consts::SIGINT, consts::SIGTERM, iterator::Signals};
+use std::sync::mpsc;
+use std::thread;
 
 use crate::appdata::WindowPhase;
 use crate::kill::{generate_knwon_signals, kill_pid, KillSignal};
@@ -6,6 +10,7 @@ use crate::sysinfo::{
     get_proc_stats, get_system_stats, show_statistics, ProcessStat, SystemProcStats, SystemStat,
     PRINT_SYS_STATS,
 };
+use crate::tui::Tui;
 
 #[derive(Debug, Default)]
 pub struct App {
@@ -30,12 +35,39 @@ impl App {
         }
     }
 
-    pub fn startup(&mut self) {
+    pub fn run(&mut self) -> Result<()> {
         if PRINT_SYS_STATS {
             show_statistics();
         }
+        let signal_rx = self.handle_signals();
         self.refresh_system_stats();
         self.refresh_processes();
+        let mut tui = Tui::new();
+        tui.enter()?;
+
+        while !self.should_quit {
+            tui.draw(self)?;
+            tui.handle_events(self)?;
+
+            signal_rx.try_recv().ok().map(|_| {
+                self.quit();
+            });
+        }
+
+        tui.exit()?;
+        Ok(())
+    }
+
+    pub fn handle_signals(&mut self) -> mpsc::Receiver<i32> {
+        let (tx, rx) = mpsc::channel();
+        let mut signals = Signals::new(&[SIGINT, SIGTERM]).unwrap();
+        thread::spawn(move || {
+            for sig in signals.forever() {
+                println!("Received signal {:?}", sig);
+                tx.send(sig).unwrap();
+            }
+        });
+        return rx;
     }
 
     pub fn refresh_system_stats(&mut self) {
