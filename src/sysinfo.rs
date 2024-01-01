@@ -3,6 +3,8 @@ use std::ops::Deref;
 use anyhow::Context;
 use sysinfo::{NetworkExt, ProcessExt, System, SystemExt, Uid};
 
+use crate::numbers::{BytesFormatterExt, PercentFormatterExt};
+
 pub const PRINT_SYS_STATS: bool = false;
 
 #[derive(Debug, Default)]
@@ -21,6 +23,7 @@ pub struct ProcessStat {
     pub exe: String,
     pub cpu_usage: f64,    // fraction of 1 core
     pub memory_usage: f64, // fraction of total memory
+    pub disk_usage: f64,
     pub user_id: Option<u32>,
     pub display_name: String,
     pub run_time: u64,
@@ -73,6 +76,8 @@ pub fn get_proc_stats(memstat: &MemoryStat) -> SystemProcStats {
             _ => proc_name.clone(),
         };
         let mem_usage_fraction: f64 = process.memory() as f64 / 1024f64 / memstat.total as f64;
+        let disk_usage = process.disk_usage().total_written_bytes as f64
+            + process.disk_usage().total_read_bytes as f64;
 
         let process_stat = ProcessStat {
             pid: pid.to_string(),
@@ -81,6 +86,7 @@ pub fn get_proc_stats(memstat: &MemoryStat) -> SystemProcStats {
             exe: process.exe().to_string_lossy().to_string(),
             cpu_usage: process.cpu_usage() as f64 / 100f64,
             memory_usage: mem_usage_fraction,
+            disk_usage: disk_usage,
             user_id,
             display_name,
             run_time: process.run_time(),
@@ -111,9 +117,10 @@ pub fn get_system_stats() -> SystemStat {
 }
 
 pub fn read_memory_stats() -> MemoryStat {
-    let meminfo_lines: Vec<String> = std::fs::read_to_string("/proc/meminfo").unwrap_or(String::new())
+    let meminfo_lines: Vec<String> = std::fs::read_to_string("/proc/meminfo")
+        .unwrap_or(String::new())
         .split('\n')
-        .map(|x| x.to_string())
+        .map(|x| x.to_string()) // avoid dropping temporary var
         .collect();
 
     let mut memory_total: u64 = 0;
@@ -187,17 +194,13 @@ pub fn read_memory_stats() -> MemoryStat {
 
 pub fn show_statistics() {
     let mut sys = System::new_all();
-
-    // First we update all information of our `System` struct.
     sys.refresh_all();
 
-    // We display all disks' information:
     println!("=> disks:");
     for disk in sys.disks() {
         println!("{:?}", disk);
     }
 
-    // Network interfaces name, data received and data transmitted:
     println!("=> networks:");
     for (interface_name, data) in sys.networks() {
         println!(
@@ -215,32 +218,58 @@ pub fn show_statistics() {
     }
 
     println!("=> system:");
-    // RAM and swap information:
     println!("total memory: {} bytes", sys.total_memory());
     println!("used memory : {} bytes", sys.used_memory());
     println!("total swap  : {} bytes", sys.total_swap());
     println!("used swap   : {} bytes", sys.used_swap());
 
-    // Display system information:
     println!("System name:             {:?}", sys.name());
     println!("System kernel version:   {:?}", sys.kernel_version());
     println!("System OS version:       {:?}", sys.os_version());
     println!("System host name:        {:?}", sys.host_name());
 
-    // Number of CPUs:
     println!("Number of CPUs: {}", sys.cpus().len());
 
-    // Display processes ID, name na disk usage:
     for (pid, process) in sys.processes() {
-        // println!("[{}] {} {:?}", pid, process.name(), process.disk_usage());
         println!(
-            "[{}] {:?} {:?} {:?} {:?} {:?}",
+            "[{}] {:?} {:?} {:?} {:?} {:?} {:?}",
             pid,
             process.name(), // chrome
             process.cmd(),  // /opt/google/chrome/chrome --type=renderer ...
             process.exe(),  // /opt/google/chrome/chrome
             process.memory(),
             process.cpu_usage(),
+            process.disk_usage(),
         );
+    }
+}
+
+impl SystemStat {
+    pub fn to_string(&self) -> String {
+        let mut lines = Vec::new();
+        lines.push(format!("OS: {}", self.os_version));
+        lines.push(format!("Host: {}", self.host_name));
+        lines.push(String::new());
+
+        lines.push(format!(
+            "Memory usage: {} / {} ({})",
+            self.memory.used.to_bytes(),
+            self.memory.total.to_bytes(),
+            self.memory.usage.to_percent1(),
+        ));
+        lines.push(format!("Cache: {}", self.memory.cache.to_bytes()));
+        lines.push(format!("Buffers: {}", self.memory.buffers.to_bytes()));
+        lines.push(format!("Dirty: {}", self.memory.dirty.to_bytes()));
+        lines.push(format!("Writeback: {}", self.memory.writeback.to_bytes()));
+
+        lines.push(format!(
+            "Swap: {} / {} ({})",
+            self.memory.swap_used.to_bytes(),
+            self.memory.swap_total.to_bytes(),
+            self.memory.swap_usage.to_percent1(),
+        ));
+        lines.push(format!("CPU cores: {}", self.cpu_num));
+
+        lines.join("\n")
     }
 }

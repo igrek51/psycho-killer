@@ -1,5 +1,5 @@
 /// Format kilobytes as kiB, MiB or GiB, with 2-digit precision
-pub fn format_kib(kilobytes: u64) -> String {
+pub fn format_kbs(kilobytes: u64) -> String {
     if kilobytes < 1024 {
         format!("{kilobytes} KiB")
     } else if kilobytes < 1024 * 1024 {
@@ -10,29 +10,29 @@ pub fn format_kib(kilobytes: u64) -> String {
 }
 
 pub trait BytesFormatterExt {
-    fn format_kib(&self) -> String;
+    fn to_bytes(&self) -> String;
 }
 
 impl BytesFormatterExt for u64 {
-    fn format_kib(&self) -> String {
-        format_kib(*self)
+    fn to_bytes(&self) -> String {
+        format_kbs(*self)
     }
 }
 
 pub trait PercentFormatterExt {
-    fn format_percent(&self) -> String;
-    fn format_percent_0(&self) -> String;
-    fn format_percent_1(&self) -> String;
+    fn to_percent2(&self) -> String;
+    fn to_percent0(&self) -> String;
+    fn to_percent1(&self) -> String;
 }
 
 impl PercentFormatterExt for f64 {
-    fn format_percent(&self) -> String {
+    fn to_percent2(&self) -> String {
         format!("{:.2}%", *self * 100f64)
     }
-    fn format_percent_0(&self) -> String {
+    fn to_percent0(&self) -> String {
         format!("{:.0}%", *self * 100f64)
     }
-    fn format_percent_1(&self) -> String {
+    fn to_percent1(&self) -> String {
         format!("{:.1}%", *self * 100f64)
     }
 }

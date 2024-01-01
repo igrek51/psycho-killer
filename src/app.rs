@@ -2,7 +2,6 @@ use ratatui::widgets::TableState;
 
 use crate::appdata::WindowPhase;
 use crate::kill::{generate_knwon_signals, kill_pid, KillSignal};
-use crate::numbers::{BytesFormatterExt, PercentFormatterExt};
 use crate::sysinfo::{
     get_proc_stats, get_system_stats, show_statistics, ProcessStat, SystemProcStats, SystemStat,
     PRINT_SYS_STATS,
@@ -114,36 +113,7 @@ impl App {
     }
 
     pub fn format_sys_stats(&self) -> String {
-        format!(
-            "
-OS: {}
-Host: {}
-
-Memory usage: {} / {} ({})
-Cache: {}
-Buffers: {}
-Dirty: {}
-Writeback: {}
-Swap: {} / {} ({})
-
-CPU cores: {}
-",
-            self.sys_stat.os_version,
-            self.sys_stat.host_name,
-            self.sys_stat.memory.used.format_kib(),
-            self.sys_stat.memory.total.format_kib(),
-            self.sys_stat.memory.usage.format_percent(),
-            self.sys_stat.memory.cache.format_kib(),
-            self.sys_stat.memory.buffers.format_kib(),
-            self.sys_stat.memory.dirty.format_kib(),
-            self.sys_stat.memory.writeback.format_kib(),
-            self.sys_stat.memory.swap_used.format_kib(),
-            self.sys_stat.memory.swap_total.format_kib(),
-            self.sys_stat.memory.swap_usage.format_percent(),
-            self.sys_stat.cpu_num,
-        )
-        .trim()
-        .to_string()
+        self.sys_stat.to_string()
     }
 }
 

@@ -108,8 +108,8 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
             Row::new(vec![
                 format!("[{}]", it.pid),
                 apply_scroll(&it.display_name, app.horizontal_scroll),
-                it.cpu_usage.format_percent_0(),
-                it.memory_usage.format_percent_1(),
+                it.cpu_usage.to_percent0(),
+                it.memory_usage.to_percent1(),
             ])
         })
         .collect();
