@@ -14,13 +14,22 @@ use crate::sysinfo::ProcessStat;
 
 pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.size();
+    let right_width = 44;
+    let rest_width = (area.width as i16 - right_width).max(3) as u16;
     let layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(vec![Constraint::Percentage(80), Constraint::Percentage(20)])
+        .constraints(vec![
+            Constraint::Min(rest_width),
+            Constraint::Min(right_width as u16),
+        ])
         .split(area);
 
     render_left(app, frame, layout[0]);
     render_right(app, frame, layout[1]);
+
+    if app.window_phase == WindowPhase::SignalPick {
+        render_signal_panel(app, frame);
+    }
 }
 
 fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
@@ -36,10 +45,6 @@ fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
     render_info_panel(app, frame, layout[0]);
     render_filter_panel(app, frame, layout[1]);
     render_proc_list(app, frame, layout[2]);
-
-    if app.window_phase == WindowPhase::SignalPick {
-        render_signal_panel(app, frame);
-    }
 }
 
 fn render_right(app: &mut App, frame: &mut Frame, area: Rect) {
@@ -59,18 +64,18 @@ fn render_right(app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
-    let widget = Paragraph::new(
-        "Press `Esc`, `Ctrl-C` or `q` to exit. `/` to filter processes. `F5` to refresh. `Enter` to confirm selection."
-    )
-    .block(
-        Block::default()
-            .title("PSycho KILLer")
-            .title_alignment(Alignment::Center)
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded),
-    )
-    .style(Style::default().fg(Color::LightRed))
-    .alignment(Alignment::Center);
+    let p_text = "Press `Esc`, `Ctrl-C` or `q` to exit. `/` to filter processes. `F5` to refresh. `Enter` to confirm selection.";
+    let widget = Paragraph::new(p_text)
+        .wrap(Wrap { trim: true })
+        .block(
+            Block::default()
+                .title("PSycho KILLer")
+                .title_alignment(Alignment::Center)
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded),
+        )
+        .style(Style::default().fg(Color::LightRed))
+        .alignment(Alignment::Center);
 
     frame.render_widget(widget, area);
 }
@@ -120,9 +125,10 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
         .max()
         .unwrap_or(0) as u16
         + 2;
+    let rest_width = area.width as i16 - col_pid_length as i16 - 5 - 5 - 3 - 2 - 2; // -3 for padding, -2 for cursor, -2 for borders
     let widths = [
         Constraint::Length(col_pid_length),
-        Constraint::Min(area.width - col_pid_length - 5 - 5 - 3 - 2 - 2), // -3 for padding, -2 for cursor, -2 for borders
+        Constraint::Min(rest_width.max(3) as u16),
         Constraint::Max(5),
         Constraint::Max(5),
     ];

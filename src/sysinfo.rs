@@ -249,8 +249,8 @@ impl SystemStat {
         let mut lines = Vec::new();
         lines.push(format!("OS: {}", self.os_version));
         lines.push(format!("Host: {}", self.host_name));
-        lines.push(String::new());
 
+        lines.push(String::new());
         lines.push(format!(
             "Memory usage: {} / {} ({})",
             self.memory.used.to_bytes(),
@@ -262,12 +262,16 @@ impl SystemStat {
         lines.push(format!("Dirty: {}", self.memory.dirty.to_bytes()));
         lines.push(format!("Writeback: {}", self.memory.writeback.to_bytes()));
 
-        lines.push(format!(
-            "Swap: {} / {} ({})",
-            self.memory.swap_used.to_bytes(),
-            self.memory.swap_total.to_bytes(),
-            self.memory.swap_usage.to_percent1(),
-        ));
+        if self.memory.swap_total > 0 {
+            lines.push(format!(
+                "Swap: {} / {} ({})",
+                self.memory.swap_used.to_bytes(),
+                self.memory.swap_total.to_bytes(),
+                self.memory.swap_usage.to_percent1(),
+            ));
+        }
+
+        lines.push(String::new());
         lines.push(format!("CPU cores: {}", self.cpu_num));
 
         lines.join("\n")
