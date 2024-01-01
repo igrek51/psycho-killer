@@ -19,6 +19,7 @@ pub struct App {
     pub process_cursor: usize,
     pub proc_stats: SystemProcStats,
     pub sys_stat: SystemStat,
+    pub init_stat: SystemStat,
     pub filter_text: String,
     pub filtered_processes: Vec<ProcessStat>,
     pub signal_cursor: usize,
@@ -42,6 +43,7 @@ impl App {
         let signal_rx = self.handle_signals();
         self.refresh_system_stats();
         self.refresh_processes();
+        self.init_stat = self.sys_stat.clone();
         let mut tui = Tui::new();
         tui.enter()?;
 
@@ -145,7 +147,7 @@ impl App {
     }
 
     pub fn format_sys_stats(&self) -> String {
-        self.sys_stat.to_string()
+        self.sys_stat.summarize(&self.init_stat)
     }
 }
 

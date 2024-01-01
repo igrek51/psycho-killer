@@ -42,8 +42,8 @@ pub struct SystemStat {
     pub disk_space_usage: f64,
     pub disk_io_usage: f64,
 
-    pub network_transfer_tx: u64,
-    pub network_transfer_rx: u64,
+    pub network_total_tx: u64, // total number of bytes transmitted
+    pub network_total_rx: u64,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -113,13 +113,29 @@ pub fn get_system_stats() -> SystemStat {
 
     let memory: MemoryStat = read_memory_stats();
 
+    let mut network_total_tx: u64 = 0;
+    let mut network_total_rx: u64 = 0;
+    for (interface_name, data) in sys.networks() {
+        if !is_net_iface_physical(interface_name) {
+            continue;
+        }
+        network_total_tx += data.total_transmitted();
+        network_total_rx += data.total_received();
+    }
+
     SystemStat {
         os_version,
         host_name,
         cpu_num,
         memory,
+        network_total_tx,
+        network_total_rx,
         ..SystemStat::default()
     }
+}
+
+fn is_net_iface_physical(name: &str) -> bool {
+    name.starts_with("enp") || name.starts_with("eth") || name.starts_with("wlp")
 }
 
 pub fn read_memory_stats() -> MemoryStat {
@@ -235,52 +251,48 @@ pub fn show_statistics() {
     println!("System host name:        {:?}", sys.host_name());
 
     println!("Number of CPUs: {}", sys.cpus().len());
-
-    for (pid, process) in sys.processes() {
-        println!(
-            "[{}] {:?} {:?} {:?} {:?} {:?} {:?}",
-            pid,
-            process.name(), // chrome
-            process.cmd(),  // /opt/google/chrome/chrome --type=renderer ...
-            process.exe(),  // /opt/google/chrome/chrome
-            process.memory(),
-            process.cpu_usage(),
-            process.disk_usage(),
-        );
-    }
 }
 
 impl SystemStat {
-    pub fn to_string(&self) -> String {
+    pub fn summarize(&self, init_stat: &SystemStat) -> String {
         let mut lines = Vec::new();
         lines.push(format!("OS: {}", self.os_version));
         lines.push(format!("Host: {}", self.host_name));
 
         lines.push(String::new());
+        lines.push(String::from("# Memory"));
         lines.push(format!(
-            "Memory usage: {} / {} ({})",
-            self.memory.used.to_bytes(),
-            self.memory.total.to_bytes(),
+            "Used: {} / {} ({})",
+            self.memory.used.to_kilobytes(),
+            self.memory.total.to_kilobytes(),
             self.memory.usage.to_percent1(),
         ));
-        lines.push(format!("Cache: {}", self.memory.cache.to_bytes()));
-        lines.push(format!("Buffers: {}", self.memory.buffers.to_bytes()));
+        lines.push(format!("Cache: {}", self.memory.cache.to_kilobytes()));
+        lines.push(format!("Buffers: {}", self.memory.buffers.to_kilobytes()));
         lines.push(format!(
             "Dirty & Writeback: {}",
-            self.memory.dirty_writeback().to_bytes()
+            self.memory.dirty_writeback().to_kilobytes()
         ));
 
         if self.memory.swap_total > 0 {
             lines.push(format!(
                 "Swap: {} / {} ({})",
-                self.memory.swap_used.to_bytes(),
-                self.memory.swap_total.to_bytes(),
+                self.memory.swap_used.to_kilobytes(),
+                self.memory.swap_total.to_kilobytes(),
                 self.memory.swap_usage.to_percent1(),
             ));
         }
 
         lines.push(String::new());
-        lines.push(format!("CPU cores: {}", self.cpu_num));
+        lines.push(String::from("# CPU"));
+        lines.push(format!("Cores: {}", self.cpu_num));
+
+        let network_tx_delta = self.network_total_tx as i32 - init_stat.network_total_tx as i32;
+        let network_rx_delta = self.network_total_rx as i32 - init_stat.network_total_rx as i32;
+        lines.push(String::new());
+        lines.push(String::from("# Network transfer so far"));
+        lines.push(format!("Received: {}", network_rx_delta.to_bytes()));
+        lines.push(format!("Transmitted: {}", network_tx_delta.to_bytes()));
 
         lines.join("\n")
     }
