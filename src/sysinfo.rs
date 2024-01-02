@@ -151,7 +151,7 @@ pub fn get_system_stats() -> SystemStat {
 }
 
 fn is_net_iface_physical(name: &str) -> bool {
-    name.starts_with("enp") || name.starts_with("eth") || name.starts_with("wlp")
+    name.starts_with("enp") || name.starts_with("eth") || name.starts_with("wlp") || name.starts_with("wlan")
 }
 
 pub fn read_memory_stats() -> MemoryStat {
@@ -278,27 +278,31 @@ impl SystemStat {
             ));
         }
 
+        if self.cpu_num > 0 {
         lines.push(String::new());
         lines.push(String::from("# CPU"));
         lines.push(format!("Cores: {}", self.cpu_num));
+        }
 
         if self.disk_space_usage.is_some() {
             lines.push(String::new());
-            lines.push(String::from("# Disk space"));
+            lines.push(String::from("# Disk space usage"));
             lines.push(format!(
-                "Usage: {} / {} ({})",
+                "/: {} / {} ({})",
                 self.disk_space_used.to_bytes(),
                 self.disk_space_total.to_bytes(),
                 self.disk_space_usage.unwrap().to_percent1(),
             ));
         }
 
+        if self.network_total_rx + self.network_total_tx > 0 {
         lines.push(String::new());
         lines.push(String::from("# Network transfer so far"));
         let network_tx_delta = self.network_total_tx as i32 - init_stat.network_total_tx as i32;
         let network_rx_delta = self.network_total_rx as i32 - init_stat.network_total_rx as i32;
         lines.push(format!("Received: {}", network_rx_delta.to_bytes()));
         lines.push(format!("Transmitted: {}", network_tx_delta.to_bytes()));
+        }
 
         lines.join("\n")
     }
