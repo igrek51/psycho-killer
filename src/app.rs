@@ -6,7 +6,7 @@ use std::sync::mpsc;
 use std::thread;
 use sysinfo::{System, SystemExt};
 
-use crate::appdata::WindowPhase;
+use crate::appdata::{Ordering, WindowPhase};
 use crate::kill::{generate_knwon_signals, kill_pid, KillSignal};
 use crate::sysinfo::{
     get_proc_stats, get_system_stats, show_debug_statistics, ProcessStat, SystemProcStats,
@@ -30,6 +30,7 @@ pub struct App {
     pub proc_list_table_state: TableState,
     pub horizontal_scroll: i32,
     pub sysinfo_sys: System,
+    pub ordering: Ordering,
 }
 
 impl App {
@@ -117,6 +118,15 @@ impl App {
         self.horizontal_scroll = new_value;
     }
 
+    pub fn switch_ordering(&mut self) {
+        self.ordering = match self.ordering {
+            Ordering::ByUptime => Ordering::ByMemory,
+            Ordering::ByMemory => Ordering::ByCpu,
+            Ordering::ByCpu => Ordering::ByUptime,
+        };
+        self.filter_processes();
+    }
+
     pub fn filter_processes(&mut self) {
         let filter_words: Vec<String> = self
             .filter_text
@@ -132,15 +142,36 @@ impl App {
             })
             .cloned()
             .collect();
-        self.filtered_processes.sort_unstable_by(|x, y| {
-            let run_time_cmp = x.run_time.cmp(&y.run_time);
-            if run_time_cmp != Equal {
-                return run_time_cmp;
-            }
-            return x.pid_num.cmp(&y.pid_num).reverse();
-        });
+        let sort_fn = self.get_sort_fn();
+        self.filtered_processes.sort_unstable_by(sort_fn);
 
         self.move_cursor(0);
+    }
+
+    pub fn get_sort_fn(&self) -> fn(&ProcessStat, &ProcessStat) -> std::cmp::Ordering {
+        match self.ordering {
+            Ordering::ByUptime => |x, y| {
+                let run_time_cmp = x.run_time.cmp(&y.run_time);
+                if run_time_cmp != Equal {
+                    return run_time_cmp;
+                }
+                return x.pid_num.cmp(&y.pid_num).reverse();
+            },
+            Ordering::ByMemory => |x, y| {
+                let memory_usage_cmp = x.memory_usage.partial_cmp(&y.memory_usage).unwrap_or(Equal);
+                if memory_usage_cmp != Equal {
+                    return memory_usage_cmp.reverse();
+                }
+                return x.pid_num.cmp(&y.pid_num).reverse();
+            },
+            Ordering::ByCpu => |x, y| {
+                let cpu_usage_cmp = x.cpu_usage.partial_cmp(&y.cpu_usage).unwrap_or(Equal);
+                if cpu_usage_cmp != Equal {
+                    return cpu_usage_cmp.reverse();
+                }
+                return x.pid_num.cmp(&y.pid_num).reverse();
+            },
+        }
     }
 
     pub fn confirm_process(&mut self) {

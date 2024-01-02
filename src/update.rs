@@ -57,6 +57,9 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
         KeyCode::F(5) => {
             app.refresh_processes();
         }
+        KeyCode::F(6) => {
+            app.switch_ordering();
+        }
         KeyCode::Char('j') if app.window_phase == SignalPick => {
             app.move_cursor(1);
         }

@@ -10,3 +10,16 @@ impl Default for WindowPhase {
         WindowPhase::Browse
     }
 }
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Ordering {
+    ByUptime,
+    ByMemory,
+    ByCpu,
+}
+
+impl Default for Ordering {
+    fn default() -> Self {
+        Ordering::ByUptime
+    }
+}

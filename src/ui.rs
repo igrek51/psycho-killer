@@ -8,16 +8,17 @@ use ratatui::{
 use crate::app::App;
 use crate::appdata::WindowPhase;
 use crate::kill::KillSignal;
-use crate::numbers::{format_duration, PercentFormatterExt};
+use crate::numbers::{format_duration, ClampNumExt, PercentFormatterExt};
 use crate::strings::apply_scroll;
 use crate::sysinfo::ProcessStat;
 
 pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.size();
-    let r_width = 44;
-    let mut l_width = (area.width as i16 - r_width).max((area.width as f32 * 0.5) as i16);
+    let w = area.width as f32;
+    let r_width = 44 as f32;
+    let mut l_width = (w - r_width).clamp_min(w * 0.5);
     if app.window_phase == WindowPhase::ProcessFilter {
-        l_width = l_width.max((area.width as f32 * 0.75) as i16);
+        l_width = l_width.clamp_min(w * 0.75);
     }
     let layout = Layout::default()
         .direction(Direction::Horizontal)
@@ -51,7 +52,7 @@ fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
-    let p_text = "Press `Esc` to exit. `/` to filter processes. `F5` to refresh list. `Enter` to confirm selection.";
+    let p_text = "Press `Esc` to exit. `/` to filter processes. `F5` to refresh list. `F6` to sort. `Enter` to confirm selection.";
     let widget = Paragraph::new(p_text)
         .wrap(Wrap { trim: true })
         .block(
@@ -100,31 +101,36 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
             Row::new(vec![
                 it.pid.clone(),
                 apply_scroll(&it.display_name, app.horizontal_scroll),
-                it.cpu_usage.to_percent0(),
-                it.memory_usage.to_percent1(),
                 format_duration(it.run_time),
+                it.memory_usage.to_percent1(),
+                it.cpu_usage.to_percent0(),
             ])
         })
         .collect();
-    let col_pid_length: u16 = app
+    let col_pid_length: i32 = app
         .filtered_processes
         .iter()
         .map(|it| it.pid.to_string().len())
         .max()
-        .unwrap_or(0) as u16
-        + 2;
-    let rest_width = area.width as i16 - col_pid_length as i16 - 4 - 5 - 9 - 4 - 2 - 2; // -4 for padding, -2 for cursor, -2 for borders
+        .unwrap_or(0) as i32;
+    let w = area.width as i32;
+    let rest_width = (w - col_pid_length - 4 - 5 - 9 - 4 - 2 - 2).clamp_min(3); // -4 for padding, -2 for cursor, -2 for borders
     let widths = [
-        Constraint::Length(col_pid_length),
-        Constraint::Min(rest_width.max(3) as u16),
-        Constraint::Max(4),
-        Constraint::Max(5),
+        Constraint::Length(col_pid_length as u16),
+        Constraint::Min(rest_width as u16),
         Constraint::Max(9),
+        Constraint::Max(5),
+        Constraint::Max(4),
     ];
+    let headers = match app.ordering {
+        crate::appdata::Ordering::ByUptime => ["PID", "Name", "Uptime↓", "MEM", "CPU"],
+        crate::appdata::Ordering::ByMemory => ["PID", "Name", "Uptime", "MEM↑", "CPU"],
+        crate::appdata::Ordering::ByCpu => ["PID", "Name", "Uptime", "MEM", "CPU↑"],
+    };
     let table = Table::new(rows, widths)
         .column_spacing(1)
         .header(
-            Row::new(vec!["PID", "Name", "CPU", "MEM", "Uptime"])
+            Row::new(headers)
                 .style(Style::new().bold())
                 .bottom_margin(1),
         )
@@ -189,8 +195,8 @@ fn render_signal_panel(app: &mut App, frame: &mut Frame) {
 }
 
 fn centered_rect(w: u16, h: u16, r: Rect) -> Rect {
-    let x_gap = (r.width as i16 - w as i16).max(0) / 2;
-    let y_gap = (r.height as i16 - h as i16).max(0) / 2;
+    let x_gap = (r.width as i32 - w as i32).clamp_min(0) / 2;
+    let y_gap = (r.height as i32 - h as i32).clamp_min(0) / 2;
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
