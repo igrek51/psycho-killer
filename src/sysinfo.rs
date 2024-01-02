@@ -1,4 +1,5 @@
 use std::ops::Deref;
+use std::time::SystemTime;
 
 use anyhow::Context;
 use sysinfo::{DiskExt, NetworkExt, ProcessExt, System, SystemExt, Uid};
@@ -15,6 +16,7 @@ pub struct SystemProcStats {
 #[derive(Debug, Default, Clone)]
 pub struct ProcessStat {
     pub pid: String,
+    pub pid_num: u32,
     // Short: chrome
     pub name: String,
     // Full command: /opt/google/chrome/chrome --type=renderer ...
@@ -29,8 +31,16 @@ pub struct ProcessStat {
     pub run_time: u64,
 }
 
+impl ProcessStat {
+    pub fn search_name(&self) -> String {
+        format!("{} {}", self.pid, self.display_name)
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct SystemStat {
+    time_ms: u64,
+
     pub os_version: String,
     pub host_name: String,
 
@@ -38,14 +48,20 @@ pub struct SystemStat {
     pub cpu_usage: f64,
 
     pub memory: MemoryStat,
+    pub disk: DiskStat,
 
     pub disk_space_usage: Option<f64>,
     pub disk_space_used: u64,
     pub disk_space_total: u64,
-    pub disk_io_usage: Option<f64>,
 
     pub network_total_tx: u64, // total number of bytes transmitted
     pub network_total_rx: u64,
+}
+
+impl SystemStat {
+    pub fn has_io_stats(&self) -> bool {
+        self.disk.time_reading_ms > 0 || self.disk.time_writing_ms > 0
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -70,6 +86,12 @@ impl MemoryStat {
     }
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct DiskStat {
+    pub time_reading_ms: u64,
+    pub time_writing_ms: u64,
+}
+
 pub fn get_proc_stats(memstat: &MemoryStat) -> SystemProcStats {
     let mut sys = System::new_all();
     sys.refresh_all();
@@ -89,12 +111,13 @@ pub fn get_proc_stats(memstat: &MemoryStat) -> SystemProcStats {
 
         let process_stat = ProcessStat {
             pid: pid.to_string(),
+            pid_num: pid.to_string().parse().unwrap_or(0),
             name: proc_name,
             cmd,
             exe: process.exe().to_string_lossy().to_string(),
             cpu_usage: process.cpu_usage() as f64 / 100f64,
             memory_usage: mem_usage_fraction,
-            disk_usage: disk_usage,
+            disk_usage,
             user_id,
             display_name,
             run_time: process.run_time(),
@@ -114,6 +137,7 @@ pub fn get_system_stats() -> SystemStat {
     let cpu_num = sys.cpus().len();
 
     let memory: MemoryStat = read_memory_stats();
+    let disk: DiskStat = read_disk_stats();
 
     let mut network_total_tx: u64 = 0;
     let mut network_total_rx: u64 = 0;
@@ -136,11 +160,11 @@ pub fn get_system_stats() -> SystemStat {
         }
     }
 
-    // /proc/diskstats
-    //https://www.kernel.org/doc/Documentation/ABI/testing/procfs-diskstats
-    let mut disk_io_usage: Option<f64> = None;
-
     SystemStat {
+        time_ms: SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64,
         os_version,
         host_name,
         cpu_num,
@@ -150,7 +174,7 @@ pub fn get_system_stats() -> SystemStat {
         disk_space_used,
         disk_space_total,
         disk_space_usage,
-        disk_io_usage,
+        disk,
         ..SystemStat::default()
     }
 }
@@ -238,6 +262,31 @@ pub fn read_memory_stats() -> MemoryStat {
     }
 }
 
+fn read_disk_stats() -> DiskStat {
+    let diskstats_lines: Vec<String> = std::fs::read_to_string("/proc/diskstats")
+        .unwrap_or(String::new())
+        .split('\n')
+        .map(|x| x.to_string()) // avoid dropping temporary var
+        .collect();
+
+    let mut time_reading_ms: u64 = 0;
+    let mut time_writing_ms: u64 = 0;
+
+    for line in diskstats_lines {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 11 {
+            continue;
+        }
+        time_reading_ms += parts[6].parse().unwrap_or(0);
+        time_writing_ms += parts[10].parse().unwrap_or(0);
+    }
+
+    return DiskStat {
+        time_reading_ms,
+        time_writing_ms,
+    };
+}
+
 pub fn show_debug_statistics() {
     let mut sys = System::new_all();
     sys.refresh_all();
@@ -257,7 +306,7 @@ pub fn show_debug_statistics() {
 }
 
 impl SystemStat {
-    pub fn summarize(&self, init_stat: &SystemStat) -> String {
+    pub fn summarize(&self, init_stat: &SystemStat, previous_stat: &SystemStat) -> String {
         let mut lines = Vec::new();
         lines.push(format!("OS: {}", self.os_version));
         lines.push(format!("Host: {}", self.host_name));
@@ -292,8 +341,6 @@ impl SystemStat {
             lines.push(format!("Cores: {}", self.cpu_num));
         }
 
-        lines.push(String::new());
-        lines.push(String::from("# Disk space"));
         if self.disk_space_usage.is_some() {
             lines.push(String::new());
             lines.push(String::from("# Disk space usage"));
@@ -304,11 +351,26 @@ impl SystemStat {
                 self.disk_space_usage.unwrap().to_percent1(),
             ));
         }
-        if self.disk_io_usage.is_some() {
-            lines.push(format!(
-                "IO utilization: {}",
-                self.disk_io_usage.unwrap().to_percent1(),
-            ));
+
+        if self.has_io_stats() {
+            lines.push(String::new());
+            lines.push(String::from("# Disk IO utilization"));
+
+            let disk_read_delta =
+                self.disk.time_reading_ms as i32 - previous_stat.disk.time_reading_ms as i32;
+            let disk_write_delta =
+                self.disk.time_writing_ms as i32 - previous_stat.disk.time_writing_ms as i32;
+            let time_delta = self.time_ms - previous_stat.time_ms;
+            if time_delta > 0 {
+                lines.push(format!(
+                    "Reading: {}",
+                    (disk_read_delta as f64 / time_delta as f64).to_percent1(),
+                ));
+                lines.push(format!(
+                    "Writing: {}",
+                    (disk_write_delta as f64 / time_delta as f64).to_percent1(),
+                ));
+            }
         }
 
         if self.network_total_rx + self.network_total_tx > 0 {

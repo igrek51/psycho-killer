@@ -1,6 +1,7 @@
 use anyhow::Result;
 use ratatui::widgets::TableState;
 use signal_hook::{consts::SIGINT, consts::SIGTERM, iterator::Signals};
+use std::cmp::Ordering::Equal;
 use std::sync::mpsc;
 use std::thread;
 
@@ -19,6 +20,7 @@ pub struct App {
     pub process_cursor: usize,
     pub proc_stats: SystemProcStats,
     pub sys_stat: SystemStat,
+    pub previous_stat: SystemStat,
     pub init_stat: SystemStat,
     pub filter_text: String,
     pub filtered_processes: Vec<ProcessStat>,
@@ -82,6 +84,7 @@ impl App {
     }
 
     pub fn tick(&mut self) {
+        self.previous_stat = self.sys_stat.clone();
         self.refresh_system_stats();
     }
 
@@ -121,11 +124,19 @@ impl App {
             .proc_stats
             .processes
             .iter()
-            .filter(|it: &&ProcessStat| contains_all_words(it.display_name.as_str(), &filter_words))
+            .filter(|it: &&ProcessStat| {
+                contains_all_words(it.search_name().as_str(), &filter_words)
+            })
             .cloned()
             .collect();
-        self.filtered_processes
-            .sort_by(|a, b| a.run_time.cmp(&b.run_time));
+        self.filtered_processes.sort_unstable_by(|x, y| {
+            let run_time_cmp = x.run_time.cmp(&y.run_time);
+            if run_time_cmp != Equal {
+                return run_time_cmp;
+            }
+            return x.pid_num.cmp(&y.pid_num).reverse();
+        });
+
         self.move_cursor(0);
     }
 
@@ -147,7 +158,8 @@ impl App {
     }
 
     pub fn format_sys_stats(&self) -> String {
-        self.sys_stat.summarize(&self.init_stat)
+        self.sys_stat
+            .summarize(&self.init_stat, &self.previous_stat)
     }
 }
 
