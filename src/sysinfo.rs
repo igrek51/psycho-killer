@@ -42,7 +42,7 @@ pub struct SystemStat {
     pub disk_space_usage: Option<f64>,
     pub disk_space_used: u64,
     pub disk_space_total: u64,
-    pub disk_io_usage: f64,
+    pub disk_io_usage: Option<f64>,
 
     pub network_total_tx: u64, // total number of bytes transmitted
     pub network_total_rx: u64,
@@ -136,6 +136,10 @@ pub fn get_system_stats() -> SystemStat {
         }
     }
 
+    // /proc/diskstats
+    //https://www.kernel.org/doc/Documentation/ABI/testing/procfs-diskstats
+    let mut disk_io_usage: Option<f64> = None;
+
     SystemStat {
         os_version,
         host_name,
@@ -146,12 +150,16 @@ pub fn get_system_stats() -> SystemStat {
         disk_space_used,
         disk_space_total,
         disk_space_usage,
+        disk_io_usage,
         ..SystemStat::default()
     }
 }
 
 fn is_net_iface_physical(name: &str) -> bool {
-    name.starts_with("enp") || name.starts_with("eth") || name.starts_with("wlp") || name.starts_with("wlan")
+    name.starts_with("enp")
+        || name.starts_with("eth")
+        || name.starts_with("wlp")
+        || name.starts_with("wlan")
 }
 
 pub fn read_memory_stats() -> MemoryStat {
@@ -279,11 +287,13 @@ impl SystemStat {
         }
 
         if self.cpu_num > 0 {
-        lines.push(String::new());
-        lines.push(String::from("# CPU"));
-        lines.push(format!("Cores: {}", self.cpu_num));
+            lines.push(String::new());
+            lines.push(String::from("# CPU"));
+            lines.push(format!("Cores: {}", self.cpu_num));
         }
 
+        lines.push(String::new());
+        lines.push(String::from("# Disk space"));
         if self.disk_space_usage.is_some() {
             lines.push(String::new());
             lines.push(String::from("# Disk space usage"));
@@ -294,14 +304,20 @@ impl SystemStat {
                 self.disk_space_usage.unwrap().to_percent1(),
             ));
         }
+        if self.disk_io_usage.is_some() {
+            lines.push(format!(
+                "IO utilization: {}",
+                self.disk_io_usage.unwrap().to_percent1(),
+            ));
+        }
 
         if self.network_total_rx + self.network_total_tx > 0 {
-        lines.push(String::new());
-        lines.push(String::from("# Network transfer so far"));
-        let network_tx_delta = self.network_total_tx as i32 - init_stat.network_total_tx as i32;
-        let network_rx_delta = self.network_total_rx as i32 - init_stat.network_total_rx as i32;
-        lines.push(format!("Received: {}", network_rx_delta.to_bytes()));
-        lines.push(format!("Transmitted: {}", network_tx_delta.to_bytes()));
+            lines.push(String::new());
+            lines.push(String::from("# Network transfer so far"));
+            let network_tx_delta = self.network_total_tx as i32 - init_stat.network_total_tx as i32;
+            let network_rx_delta = self.network_total_rx as i32 - init_stat.network_total_rx as i32;
+            lines.push(format!("Received: {}", network_rx_delta.to_bytes()));
+            lines.push(format!("Transmitted: {}", network_tx_delta.to_bytes()));
         }
 
         lines.join("\n")
