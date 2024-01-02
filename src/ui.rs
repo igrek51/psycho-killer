@@ -15,11 +15,14 @@ use crate::sysinfo::ProcessStat;
 pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.size();
     let r_width = 44;
-    let l_width = (area.width as i16 - r_width).max((area.width as f32 * 0.5) as i16) as u16;
+    let mut l_width = (area.width as i16 - r_width).max((area.width as f32 * 0.5) as i16);
+    if app.window_phase == WindowPhase::ProcessFilter {
+        l_width = l_width.max((area.width as f32 * 0.75) as i16);
+    }
     let layout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints(vec![
-            Constraint::Min(l_width),
+            Constraint::Min(l_width as u16),
             Constraint::Min(r_width as u16),
         ])
         .split(area);
@@ -78,7 +81,7 @@ fn render_filter_panel(app: &mut App, frame: &mut Frame, area: Rect) {
     let widget = Paragraph::new(p_text)
         .block(
             Block::default()
-                .title("Filter")
+                .title("Filter (`/`)")
                 .title_alignment(Alignment::Center)
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),

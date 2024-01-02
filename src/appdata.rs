@@ -7,6 +7,6 @@ pub enum WindowPhase {
 
 impl Default for WindowPhase {
     fn default() -> Self {
-        WindowPhase::ProcessFilter
+        WindowPhase::Browse
     }
 }
