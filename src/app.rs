@@ -7,8 +7,8 @@ use std::thread;
 use crate::appdata::WindowPhase;
 use crate::kill::{generate_knwon_signals, kill_pid, KillSignal};
 use crate::sysinfo::{
-    get_proc_stats, get_system_stats, show_statistics, ProcessStat, SystemProcStats, SystemStat,
-    PRINT_SYS_STATS,
+    get_proc_stats, get_system_stats, show_debug_statistics, ProcessStat, SystemProcStats,
+    SystemStat, PRINT_SYS_STATS,
 };
 use crate::tui::Tui;
 
@@ -38,7 +38,7 @@ impl App {
 
     pub fn run(&mut self) -> Result<()> {
         if PRINT_SYS_STATS {
-            show_statistics();
+            show_debug_statistics();
         }
         let signal_rx = self.handle_signals();
         self.refresh_system_stats();

@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 use anyhow::Context;
-use sysinfo::{NetworkExt, ProcessExt, System, SystemExt, Uid};
+use sysinfo::{DiskExt, NetworkExt, ProcessExt, System, SystemExt, Uid};
 
 use crate::numbers::{BytesFormatterExt, PercentFormatterExt};
 
@@ -39,7 +39,9 @@ pub struct SystemStat {
 
     pub memory: MemoryStat,
 
-    pub disk_space_usage: f64,
+    pub disk_space_usage: Option<f64>,
+    pub disk_space_used: u64,
+    pub disk_space_total: u64,
     pub disk_io_usage: f64,
 
     pub network_total_tx: u64, // total number of bytes transmitted
@@ -123,6 +125,17 @@ pub fn get_system_stats() -> SystemStat {
         network_total_rx += data.total_received();
     }
 
+    let mut disk_space_used: u64 = 0;
+    let mut disk_space_total: u64 = 0;
+    let mut disk_space_usage: Option<f64> = None;
+    for disk in sys.disks() {
+        if disk.mount_point().to_str().unwrap_or("") == "/" {
+            disk_space_total = disk.total_space();
+            disk_space_used = disk.total_space() - disk.available_space();
+            disk_space_usage = Some(disk_space_used as f64 / disk_space_total as f64);
+        }
+    }
+
     SystemStat {
         os_version,
         host_name,
@@ -130,6 +143,9 @@ pub fn get_system_stats() -> SystemStat {
         memory,
         network_total_tx,
         network_total_rx,
+        disk_space_used,
+        disk_space_total,
+        disk_space_usage,
         ..SystemStat::default()
     }
 }
@@ -214,7 +230,7 @@ pub fn read_memory_stats() -> MemoryStat {
     }
 }
 
-pub fn show_statistics() {
+pub fn show_debug_statistics() {
     let mut sys = System::new_all();
     sys.refresh_all();
 
@@ -223,32 +239,11 @@ pub fn show_statistics() {
         println!("{:?}", disk);
     }
 
-    println!("=> networks:");
-    for (interface_name, data) in sys.networks() {
-        println!(
-            "{}: {}/{} B",
-            interface_name,
-            data.total_received(),
-            data.total_transmitted()
-        );
-    }
-
     // Components temperature:
     println!("=> components:");
     for component in sys.components() {
         println!("{:?}", component);
     }
-
-    println!("=> system:");
-    println!("total memory: {} bytes", sys.total_memory());
-    println!("used memory : {} bytes", sys.used_memory());
-    println!("total swap  : {} bytes", sys.total_swap());
-    println!("used swap   : {} bytes", sys.used_swap());
-
-    println!("System name:             {:?}", sys.name());
-    println!("System kernel version:   {:?}", sys.kernel_version());
-    println!("System OS version:       {:?}", sys.os_version());
-    println!("System host name:        {:?}", sys.host_name());
 
     println!("Number of CPUs: {}", sys.cpus().len());
 }
@@ -287,10 +282,21 @@ impl SystemStat {
         lines.push(String::from("# CPU"));
         lines.push(format!("Cores: {}", self.cpu_num));
 
-        let network_tx_delta = self.network_total_tx as i32 - init_stat.network_total_tx as i32;
-        let network_rx_delta = self.network_total_rx as i32 - init_stat.network_total_rx as i32;
+        if self.disk_space_usage.is_some() {
+            lines.push(String::new());
+            lines.push(String::from("# Disk space"));
+            lines.push(format!(
+                "Usage: {} / {} ({})",
+                self.disk_space_used.to_bytes(),
+                self.disk_space_total.to_bytes(),
+                self.disk_space_usage.unwrap().to_percent1(),
+            ));
+        }
+
         lines.push(String::new());
         lines.push(String::from("# Network transfer so far"));
+        let network_tx_delta = self.network_total_tx as i32 - init_stat.network_total_tx as i32;
+        let network_rx_delta = self.network_total_rx as i32 - init_stat.network_total_rx as i32;
         lines.push(format!("Received: {}", network_rx_delta.to_bytes()));
         lines.push(format!("Transmitted: {}", network_tx_delta.to_bytes()));
 
