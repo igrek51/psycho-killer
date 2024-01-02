@@ -45,7 +45,7 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
             app.filter_text.push(c);
             app.filter_processes();
         }
-        KeyCode::Char('/') if app.window_phase == Browse => {
+        KeyCode::Char('/') | KeyCode::F(4) if app.window_phase == Browse => {
             app.window_phase = ProcessFilter;
         }
         KeyCode::Char('q') if app.window_phase == Browse => {
@@ -71,6 +71,11 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
                 app.confirm_signal();
             }
         },
+        KeyCode::Char(c) if app.window_phase == Browse => {
+            app.window_phase = ProcessFilter;
+            app.filter_text.push(c);
+            app.filter_processes();
+        }
         _ => {}
     };
 }
