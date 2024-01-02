@@ -8,7 +8,7 @@ use ratatui::{
 use crate::app::App;
 use crate::appdata::WindowPhase;
 use crate::kill::KillSignal;
-use crate::numbers::PercentFormatterExt;
+use crate::numbers::{format_duration, PercentFormatterExt};
 use crate::strings::apply_scroll;
 use crate::sysinfo::ProcessStat;
 
@@ -98,10 +98,11 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
         .iter()
         .map(|it: &ProcessStat| {
             Row::new(vec![
-                format!("[{}]", it.pid),
+                it.pid.clone(),
                 apply_scroll(&it.display_name, app.horizontal_scroll),
                 it.cpu_usage.to_percent0(),
                 it.memory_usage.to_percent1(),
+                format_duration(it.run_time),
             ])
         })
         .collect();
@@ -112,17 +113,18 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
         .max()
         .unwrap_or(0) as u16
         + 2;
-    let rest_width = area.width as i16 - col_pid_length as i16 - 5 - 5 - 3 - 2 - 2; // -3 for padding, -2 for cursor, -2 for borders
+    let rest_width = area.width as i16 - col_pid_length as i16 - 4 - 5 - 9 - 4 - 2 - 2; // -4 for padding, -2 for cursor, -2 for borders
     let widths = [
         Constraint::Length(col_pid_length),
         Constraint::Min(rest_width.max(3) as u16),
+        Constraint::Max(4),
         Constraint::Max(5),
-        Constraint::Max(5),
+        Constraint::Max(9),
     ];
     let table = Table::new(rows, widths)
         .column_spacing(1)
         .header(
-            Row::new(vec!["PID", "Name", "CPU", "MEM"])
+            Row::new(vec!["PID", "Name", "CPU", "MEM", "Uptime"])
                 .style(Style::new().bold())
                 .bottom_margin(1),
         )

@@ -28,6 +28,8 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
         }
         KeyCode::PageDown => app.move_cursor(10),
         KeyCode::PageUp => app.move_cursor(-10),
+        KeyCode::Home => app.move_cursor(-(app.filtered_processes.len() as i32)),
+        KeyCode::End => app.move_cursor(app.filtered_processes.len() as i32),
         KeyCode::Char('u')
             if key_event.modifiers == KeyModifiers::CONTROL
                 && app.window_phase == ProcessFilter =>

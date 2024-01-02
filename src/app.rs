@@ -4,6 +4,7 @@ use signal_hook::{consts::SIGINT, consts::SIGTERM, iterator::Signals};
 use std::cmp::Ordering::Equal;
 use std::sync::mpsc;
 use std::thread;
+use sysinfo::{System, SystemExt};
 
 use crate::appdata::WindowPhase;
 use crate::kill::{generate_knwon_signals, kill_pid, KillSignal};
@@ -28,12 +29,14 @@ pub struct App {
     pub known_signals: Vec<KillSignal>,
     pub proc_list_table_state: TableState,
     pub horizontal_scroll: i32,
+    pub sysinfo_sys: System,
 }
 
 impl App {
     pub fn new() -> Self {
         Self {
             known_signals: generate_knwon_signals(),
+            sysinfo_sys: System::new_all(),
             ..Self::default()
         }
     }
@@ -79,7 +82,7 @@ impl App {
     }
 
     pub fn refresh_processes(&mut self) {
-        self.proc_stats = get_proc_stats(&self.sys_stat.memory);
+        self.proc_stats = get_proc_stats(&self.sys_stat.memory, &mut self.sysinfo_sys);
         self.filter_processes();
     }
 

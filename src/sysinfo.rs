@@ -28,7 +28,7 @@ pub struct ProcessStat {
     pub disk_usage: f64,
     pub user_id: Option<u32>,
     pub display_name: String,
-    pub run_time: u64,
+    pub run_time: u64, // in seconds
 }
 
 impl ProcessStat {
@@ -92,8 +92,7 @@ pub struct DiskStat {
     pub time_writing_ms: u64,
 }
 
-pub fn get_proc_stats(memstat: &MemoryStat) -> SystemProcStats {
-    let mut sys = System::new_all();
+pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats {
     sys.refresh_all();
 
     let mut processes = Vec::new();

@@ -29,6 +29,19 @@ pub fn format_bytes<T: Numeric>(bytes: T) -> String {
     }
 }
 
+pub fn format_duration(duration: u64) -> String {
+    let seconds = duration % 60;
+    let minutes = (duration / 60) % 60;
+    let hours = (duration / 3600) % 24;
+    if duration < 60 {
+        format!("{seconds}s")
+    } else if duration < 3600 {
+        format!("{minutes}m{seconds}s")
+    } else {
+        format!("{hours}h{minutes}m{seconds}s")
+    }
+}
+
 pub trait BytesFormatterExt {
     fn to_kilobytes(&self) -> String;
     fn to_bytes(&self) -> String;
