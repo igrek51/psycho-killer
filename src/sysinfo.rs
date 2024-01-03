@@ -1,7 +1,7 @@
 use std::time::SystemTime;
 use std::{collections::HashMap, ops::Deref};
 
-use anyhow::Context;
+use anyhow::{anyhow, Context, Result};
 use itertools::Itertools;
 use sysinfo::{ComponentExt, DiskExt, NetworkExt, ProcessExt, System, SystemExt, Uid};
 
@@ -152,7 +152,7 @@ pub fn get_system_stats() -> SystemStat {
 
     let memory: MemoryStat = read_memory_stats();
     let disk: DiskStat = read_disk_stats();
-    let cpu: CpuStat = read_cpu_stats();
+    let cpu: CpuStat = read_cpu_stats().unwrap_or_else(|_| CpuStat::default());
 
     let mut network_total_tx: u64 = 0;
     let mut network_total_rx: u64 = 0;
@@ -320,24 +320,24 @@ fn read_disk_stats() -> DiskStat {
     };
 }
 
-fn read_cpu_stats() -> CpuStat {
+fn read_cpu_stats() -> Result<CpuStat> {
     let lines: Vec<String> = std::fs::read_to_string("/proc/stat")
-        .unwrap_or(String::new())
+        .context("reading /proc/stat")?
         .split('\n')
         .map(|x| x.to_string())
         .collect();
     if lines.len() < 1 {
-        return CpuStat::default();
+        return Err(anyhow!("not enough lines"));
     }
     let first_line = lines[0].trim();
     assert!(
-        first_line.starts_with("cpu "),
+        first_line.starts_with("cpu"),
         "unexpected first line of /proc/stat: {}",
         first_line
     );
     let parts: Vec<&str> = first_line.split_whitespace().collect();
     if parts.len() < 11 {
-        return CpuStat::default();
+        return Err(anyhow!("first line doesn't have enough parts"));
     }
 
     let user = parts[1].parse::<u64>().unwrap_or(0);
@@ -354,10 +354,10 @@ fn read_cpu_stats() -> CpuStat {
     let total_time =
         user + nice + system + idle + iowait + irq + softirq + steal + guest + guest_nice;
     let busy_time = user + nice + system + irq + softirq + steal + guest + guest_nice;
-    return CpuStat {
+    return Ok(CpuStat {
         busy_time,
         total_time,
-    };
+    });
 }
 
 pub fn show_debug_statistics() {
@@ -401,11 +401,12 @@ impl SystemStat {
             ));
         }
 
+        lines.push(String::new());
+        lines.push(String::from("# CPU"));
         if self.cpu_num > 0 {
-            lines.push(String::new());
-            lines.push(String::from("# CPU"));
             lines.push(format!("Cores: {}", self.cpu_num));
-
+        }
+        if self.cpu.total_time > 0 {
             let busy_delta = self.cpu.busy_time as i32 - previous_stat.cpu.busy_time as i32;
             let total_delta = self.cpu.total_time as i32 - previous_stat.cpu.total_time as i32;
             let usage: f64 = match total_delta {
