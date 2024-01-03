@@ -1,12 +1,13 @@
-use std::ops::Deref;
 use std::time::SystemTime;
+use std::{collections::HashMap, ops::Deref};
 
 use anyhow::Context;
-use sysinfo::{DiskExt, NetworkExt, ProcessExt, System, SystemExt, Uid};
+use itertools::Itertools;
+use sysinfo::{ComponentExt, DiskExt, NetworkExt, ProcessExt, System, SystemExt, Uid};
 
 use crate::numbers::{BytesFormatterExt, PercentFormatterExt};
 
-pub const PRINT_SYS_STATS: bool = false;
+pub const PRINT_SYS_STATS: bool = true;
 
 #[derive(Debug, Default)]
 pub struct SystemProcStats {
@@ -45,7 +46,6 @@ pub struct SystemStat {
     pub host_name: String,
 
     pub cpu_num: usize,
-    pub cpu_usage: f64,
 
     pub memory: MemoryStat,
     pub disk: DiskStat,
@@ -57,6 +57,8 @@ pub struct SystemStat {
 
     pub network_total_tx: u64, // total number of bytes transmitted
     pub network_total_rx: u64,
+
+    pub temperatures: HashMap<String, f32>,
 }
 
 impl SystemStat {
@@ -167,6 +169,14 @@ pub fn get_system_stats() -> SystemStat {
         }
     }
 
+    let mut temperatures: HashMap<String, f32> = HashMap::new();
+    for component in sys.components() {
+        let temperature = component.temperature();
+        if temperature.is_normal() {
+            temperatures.insert(component.label().to_string(), temperature);
+        }
+    }
+
     SystemStat {
         time_ms: SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -183,7 +193,7 @@ pub fn get_system_stats() -> SystemStat {
         disk_space_usage,
         disk,
         cpu,
-        ..SystemStat::default()
+        temperatures,
     }
 }
 
@@ -339,18 +349,11 @@ pub fn show_debug_statistics() {
     let mut sys = System::new_all();
     sys.refresh_all();
 
-    println!("=> disks:");
-    for disk in sys.disks() {
-        println!("{:?}", disk);
-    }
-
     // Components temperature:
     println!("=> components:");
     for component in sys.components() {
         println!("{:?}", component);
     }
-
-    println!("Number of CPUs: {}", sys.cpus().len());
 }
 
 impl SystemStat {
@@ -436,6 +439,15 @@ impl SystemStat {
             let network_rx_delta = self.network_total_rx as i32 - init_stat.network_total_rx as i32;
             lines.push(format!("Received: {}", network_rx_delta.to_bytes()));
             lines.push(format!("Transmitted: {}", network_tx_delta.to_bytes()));
+        }
+
+        if self.temperatures.len() > 0 {
+            lines.push(String::new());
+            lines.push(String::from("# Temperatures"));
+            for label in self.temperatures.keys().sorted() {
+                let temperature = self.temperatures[label];
+                lines.push(format!("{}: {:.0}°C", label, temperature.round()));
+            }
         }
 
         lines.join("\n")
