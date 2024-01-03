@@ -6,7 +6,7 @@ use ratatui::{
 };
 
 use crate::app::App;
-use crate::appdata::WindowPhase;
+use crate::appdata::WindowFocus;
 use crate::kill::KillSignal;
 use crate::numbers::{format_duration, ClampNumExt, PercentFormatterExt};
 use crate::strings::apply_scroll;
@@ -15,10 +15,16 @@ use crate::sysinfo::ProcessStat;
 pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.size();
     let w = area.width as f32;
-    let r_width = 44 as f32;
-    let mut l_width = (w - r_width).clamp_min(w * 0.5);
-    if app.window_phase == WindowPhase::ProcessFilter {
-        l_width = l_width.clamp_min(w * 0.75);
+    let r_width = 44.;
+    let mut l_width = (w - r_width).clamp_min(w * 0.4);
+    match app.window_focus {
+        WindowFocus::ProcessFilter | WindowFocus::Browse | WindowFocus::SignalPick => {
+            l_width = l_width
+                .clamp_min(w * 0.75)
+                .clamp_min(58.)
+                .clamp_max(w * 0.9);
+        }
+        WindowFocus::SystemStats => {}
     }
     let layout = Layout::default()
         .direction(Direction::Horizontal)
@@ -31,7 +37,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     render_left(app, frame, layout[0]);
     render_right(app, frame, layout[1]);
 
-    if app.window_phase == WindowPhase::SignalPick {
+    if app.window_focus == WindowFocus::SignalPick {
         render_signal_panel(app, frame);
     }
 }
@@ -69,20 +75,22 @@ fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_filter_panel(app: &mut App, frame: &mut Frame, area: Rect) {
-    let p_text = match app.window_phase {
-        WindowPhase::Browse => app.filter_text.clone(),
-        WindowPhase::ProcessFilter => format!("{}\u{2588}", app.filter_text), // cursor block
-        WindowPhase::SignalPick => app.filter_text.clone(),
+    let p_text = match app.window_focus {
+        WindowFocus::ProcessFilter => format!("{}\u{2588}", app.filter_text), // cursor block
+        _ => app.filter_text.clone(),
     };
-    let panel_color = match app.window_phase {
-        WindowPhase::ProcessFilter => Color::LightYellow,
+    let panel_color = match app.window_focus {
+        WindowFocus::ProcessFilter => Color::LightYellow,
         _ => Color::White,
     };
+    let mut title = Block::default().title("Filter (`/`)");
+    if app.window_focus == WindowFocus::ProcessFilter {
+        title = title.title_style(Style::new().bold());
+    }
 
     let widget = Paragraph::new(p_text)
         .block(
-            Block::default()
-                .title("Filter (`/`)")
+            title
                 .title_alignment(Alignment::Center)
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
@@ -127,6 +135,10 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
         crate::appdata::Ordering::ByMemory => ["PID", "Name", "Uptime", "MEM↑", "CPU"],
         crate::appdata::Ordering::ByCpu => ["PID", "Name", "Uptime", "MEM", "CPU↑"],
     };
+    let mut title = Block::default().title("Running Processes");
+    if app.window_focus == WindowFocus::Browse {
+        title = title.title_style(Style::new().bold());
+    }
     let table = Table::new(rows, widths)
         .column_spacing(1)
         .header(
@@ -134,11 +146,7 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
                 .style(Style::new().bold())
                 .bottom_margin(1),
         )
-        .block(
-            Block::default()
-                .title("Running Processes")
-                .borders(Borders::ALL),
-        )
+        .block(title.borders(Borders::ALL))
         .style(Style::default().fg(Color::White))
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">>");
@@ -147,16 +155,23 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_right(app: &mut App, frame: &mut Frame, area: Rect) {
+    let panel_color = match app.window_focus {
+        WindowFocus::SystemStats => Color::LightYellow,
+        _ => Color::Yellow,
+    };
+    let mut title = Block::default().title("System");
+    if app.window_focus == WindowFocus::SystemStats {
+        title = title.title_style(Style::new().bold());
+    }
     let widget = Paragraph::new(app.format_sys_stats())
         .wrap(Wrap { trim: true })
         .block(
-            Block::default()
-                .title("System")
+            title
                 .title_alignment(Alignment::Center)
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
         )
-        .style(Style::default().fg(Color::Yellow))
+        .style(Style::default().fg(panel_color))
         .alignment(Alignment::Left);
 
     frame.render_widget(widget, area);

@@ -1,13 +1,14 @@
-#[derive(Debug, PartialEq, Eq)]
-pub enum WindowPhase {
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum WindowFocus {
     Browse,
     ProcessFilter,
     SignalPick,
+    SystemStats,
 }
 
-impl Default for WindowPhase {
+impl Default for WindowFocus {
     fn default() -> Self {
-        WindowPhase::Browse
+        WindowFocus::Browse
     }
 }
 

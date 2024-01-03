@@ -7,8 +7,6 @@ use sysinfo::{ComponentExt, DiskExt, NetworkExt, ProcessExt, System, SystemExt, 
 
 use crate::numbers::{BytesFormatterExt, PercentFormatterExt};
 
-pub const PRINT_SYS_STATS: bool = true;
-
 #[derive(Debug, Default)]
 pub struct SystemProcStats {
     pub processes: Vec<ProcessStat>,
@@ -358,17 +356,6 @@ fn read_cpu_stats() -> Result<CpuStat> {
         busy_time,
         total_time,
     });
-}
-
-pub fn show_debug_statistics() {
-    let mut sys = System::new_all();
-    sys.refresh_all();
-
-    // Components temperature:
-    println!("=> components:");
-    for component in sys.components() {
-        println!("{:?}", component);
-    }
 }
 
 impl SystemStat {

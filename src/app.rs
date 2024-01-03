@@ -6,18 +6,16 @@ use std::sync::mpsc;
 use std::thread;
 use sysinfo::{System, SystemExt};
 
-use crate::appdata::{Ordering, WindowPhase};
+use crate::appdata::{Ordering, WindowFocus};
 use crate::kill::{generate_knwon_signals, kill_pid, KillSignal};
-use crate::sysinfo::{
-    get_proc_stats, get_system_stats, show_debug_statistics, ProcessStat, SystemProcStats,
-    SystemStat, PRINT_SYS_STATS,
-};
+use crate::numbers::ClampNumExt;
+use crate::sysinfo::{get_proc_stats, get_system_stats, ProcessStat, SystemProcStats, SystemStat};
 use crate::tui::Tui;
 
 #[derive(Debug, Default)]
 pub struct App {
     pub should_quit: bool,
-    pub window_phase: WindowPhase,
+    pub window_focus: WindowFocus,
     pub process_cursor: usize,
     pub proc_stats: SystemProcStats,
     pub sys_stat: SystemStat,
@@ -29,6 +27,7 @@ pub struct App {
     pub known_signals: Vec<KillSignal>,
     pub proc_list_table_state: TableState,
     pub horizontal_scroll: i32,
+    pub sysinfo_scroll: i32,
     pub sysinfo_sys: System,
     pub ordering: Ordering,
 }
@@ -43,9 +42,6 @@ impl App {
     }
 
     pub fn run(&mut self) -> Result<()> {
-        if PRINT_SYS_STATS {
-            show_debug_statistics();
-        }
         let signal_rx = self.handle_signals();
         self.refresh_system_stats();
         self.refresh_processes();
@@ -97,19 +93,22 @@ impl App {
     }
 
     pub fn move_cursor(&mut self, delta: i32) {
-        match self.window_phase {
-            WindowPhase::Browse | WindowPhase::ProcessFilter => {
-                let mut new_index = self.process_cursor as i32 + delta;
-                new_index = new_index.clamp(0, (self.filtered_processes.len() as i32 - 1).max(0));
-                self.process_cursor = new_index as usize;
+        match self.window_focus {
+            WindowFocus::Browse | WindowFocus::ProcessFilter => {
+                self.process_cursor = (self.process_cursor as i32 + delta)
+                    .clamp_max(self.filtered_processes.len() as i32 - 1)
+                    .clamp_min(0) as usize;
+                self.proc_list_table_state.select(Some(self.process_cursor));
             }
-            WindowPhase::SignalPick => {
-                let mut new_index = self.signal_cursor as i32 + delta;
-                new_index = new_index.clamp(0, (self.known_signals.len() as i32 - 1).max(0));
-                self.signal_cursor = new_index as usize;
+            WindowFocus::SignalPick => {
+                self.signal_cursor = (self.signal_cursor as i32 + delta)
+                    .clamp_max(self.known_signals.len() as i32 - 1)
+                    .clamp_min(0) as usize;
+            }
+            WindowFocus::SystemStats => {
+                self.sysinfo_scroll = (self.sysinfo_scroll + delta).clamp_min(0);
             }
         }
-        self.proc_list_table_state.select(Some(self.process_cursor));
     }
 
     pub fn move_horizontal_scroll(&mut self, delta: i32) {
@@ -178,7 +177,7 @@ impl App {
         if self.process_cursor >= self.filtered_processes.len() {
             return;
         }
-        self.window_phase = WindowPhase::SignalPick;
+        self.window_focus = WindowFocus::SignalPick;
         self.signal_cursor = 0;
     }
 
@@ -187,13 +186,17 @@ impl App {
         let signal: &KillSignal = &self.known_signals[self.signal_cursor];
         kill_pid(&process.pid, signal);
 
-        self.window_phase = WindowPhase::ProcessFilter;
+        self.window_focus = WindowFocus::ProcessFilter;
         self.refresh_processes();
     }
 
     pub fn format_sys_stats(&self) -> String {
         self.sys_stat
             .summarize(&self.init_stat, &self.previous_stat)
+            .lines()
+            .skip(self.sysinfo_scroll as usize)
+            .collect::<Vec<&str>>()
+            .join("\n")
     }
 }
 
