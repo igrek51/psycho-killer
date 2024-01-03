@@ -51,9 +51,7 @@ pub struct SystemStat {
     pub disk: DiskStat,
     pub cpu: CpuStat,
 
-    pub disk_space_usage: Option<f64>,
-    pub disk_space_used: u64,
-    pub disk_space_total: u64,
+    pub disk_space_usages: HashMap<String, PartitionUsage>,
 
     pub network_total_tx: u64, // total number of bytes transmitted
     pub network_total_rx: u64,
@@ -93,6 +91,14 @@ impl MemoryStat {
 pub struct DiskStat {
     pub time_reading_ms: u64,
     pub time_writing_ms: u64,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct PartitionUsage {
+    pub mount_point: String,
+    pub used: u64,
+    pub total: u64,
+    pub usage: f64,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -158,14 +164,18 @@ pub fn get_system_stats() -> SystemStat {
         network_total_rx += data.total_received();
     }
 
-    let mut disk_space_used: u64 = 0;
-    let mut disk_space_total: u64 = 0;
-    let mut disk_space_usage: Option<f64> = None;
+    let mut disk_space_usages: HashMap<String, PartitionUsage> = HashMap::new();
     for disk in sys.disks() {
-        if disk.mount_point().to_str().unwrap_or("") == "/" {
-            disk_space_total = disk.total_space();
-            disk_space_used = disk.total_space() - disk.available_space();
-            disk_space_usage = Some(disk_space_used as f64 / disk_space_total as f64);
+        let mount_point = disk.mount_point().to_str().unwrap_or("");
+        if include_mount_point(mount_point) && disk.total_space() > 0 {
+            let used = disk.total_space() - disk.available_space();
+            let partition_usage = PartitionUsage {
+                mount_point: mount_point.to_string(),
+                total: disk.total_space(),
+                used,
+                usage: used as f64 / disk.total_space() as f64,
+            };
+            disk_space_usages.insert(mount_point.to_string(), partition_usage);
         }
     }
 
@@ -188,9 +198,7 @@ pub fn get_system_stats() -> SystemStat {
         memory,
         network_total_tx,
         network_total_rx,
-        disk_space_used,
-        disk_space_total,
-        disk_space_usage,
+        disk_space_usages,
         disk,
         cpu,
         temperatures,
@@ -202,6 +210,13 @@ fn is_net_iface_physical(name: &str) -> bool {
         || name.starts_with("eth")
         || name.starts_with("wlp")
         || name.starts_with("wlan")
+}
+
+fn include_mount_point(mount_point: &str) -> bool {
+    mount_point == "/"
+        || mount_point.starts_with("/mnt/")
+        || mount_point.starts_with("/media/")
+        || mount_point.starts_with("/storage/")
 }
 
 pub fn read_memory_stats() -> MemoryStat {
@@ -400,15 +415,19 @@ impl SystemStat {
             lines.push(format!("Usage: {}", usage.to_percent2()));
         }
 
-        if self.disk_space_usage.is_some() {
+        if self.disk_space_usages.len() > 0 {
             lines.push(String::new());
             lines.push(String::from("# Disk space usage"));
-            lines.push(format!(
-                "/: {} / {} ({})",
-                self.disk_space_used.to_bytes(),
-                self.disk_space_total.to_bytes(),
-                self.disk_space_usage.unwrap().to_percent1(),
-            ));
+            for name in self.disk_space_usages.keys().sorted() {
+                let usage: PartitionUsage = self.disk_space_usages[name].clone();
+                lines.push(format!(
+                    "{}: {} / {} ({})",
+                    name,
+                    usage.used.to_bytes(),
+                    usage.total.to_bytes(),
+                    usage.usage.to_percent1(),
+                ));
+            }
         }
 
         if self.has_io_stats() {

@@ -52,7 +52,7 @@ fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
-    let p_text = "Press `Esc` to exit. `/` to filter processes. `F5` to refresh list. `F6` to sort. `Enter` to confirm selection.";
+    let p_text = "`/` to filter processes. `F5` to refresh list. `F6` to sort. `Enter` to confirm. `Esc` to exit.";
     let widget = Paragraph::new(p_text)
         .wrap(Wrap { trim: true })
         .block(
