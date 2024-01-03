@@ -49,6 +49,7 @@ pub struct SystemStat {
 
     pub memory: MemoryStat,
     pub disk: DiskStat,
+    pub cpu: CpuStat,
 
     pub disk_space_usage: Option<f64>,
     pub disk_space_used: u64,
@@ -90,6 +91,12 @@ impl MemoryStat {
 pub struct DiskStat {
     pub time_reading_ms: u64,
     pub time_writing_ms: u64,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct CpuStat {
+    pub busy_time: u64,
+    pub total_time: u64,
 }
 
 pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats {
@@ -137,6 +144,7 @@ pub fn get_system_stats() -> SystemStat {
 
     let memory: MemoryStat = read_memory_stats();
     let disk: DiskStat = read_disk_stats();
+    let cpu: CpuStat = read_cpu_stats();
 
     let mut network_total_tx: u64 = 0;
     let mut network_total_rx: u64 = 0;
@@ -174,6 +182,7 @@ pub fn get_system_stats() -> SystemStat {
         disk_space_total,
         disk_space_usage,
         disk,
+        cpu,
         ..SystemStat::default()
     }
 }
@@ -262,7 +271,7 @@ pub fn read_memory_stats() -> MemoryStat {
 }
 
 fn read_disk_stats() -> DiskStat {
-    let diskstats_lines: Vec<String> = std::fs::read_to_string("/proc/diskstats")
+    let lines: Vec<String> = std::fs::read_to_string("/proc/diskstats")
         .unwrap_or(String::new())
         .split('\n')
         .map(|x| x.to_string()) // avoid dropping temporary var
@@ -271,7 +280,7 @@ fn read_disk_stats() -> DiskStat {
     let mut time_reading_ms: u64 = 0;
     let mut time_writing_ms: u64 = 0;
 
-    for line in diskstats_lines {
+    for line in lines {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() < 11 {
             continue;
@@ -283,6 +292,46 @@ fn read_disk_stats() -> DiskStat {
     return DiskStat {
         time_reading_ms,
         time_writing_ms,
+    };
+}
+
+fn read_cpu_stats() -> CpuStat {
+    let lines: Vec<String> = std::fs::read_to_string("/proc/stat")
+        .unwrap_or(String::new())
+        .split('\n')
+        .map(|x| x.to_string())
+        .collect();
+    if lines.len() < 1 {
+        return CpuStat::default();
+    }
+    let first_line = lines[0].trim();
+    assert!(
+        first_line.starts_with("cpu "),
+        "unexpected first line of /proc/stat: {}",
+        first_line
+    );
+    let parts: Vec<&str> = first_line.split_whitespace().collect();
+    if parts.len() < 11 {
+        return CpuStat::default();
+    }
+
+    let user = parts[1].parse::<u64>().unwrap_or(0);
+    let nice = parts[2].parse::<u64>().unwrap_or(0);
+    let system = parts[3].parse::<u64>().unwrap_or(0);
+    let idle = parts[4].parse::<u64>().unwrap_or(0);
+    let iowait = parts[5].parse::<u64>().unwrap_or(0);
+    let irq = parts[6].parse::<u64>().unwrap_or(0);
+    let softirq = parts[7].parse::<u64>().unwrap_or(0);
+    let steal = parts[8].parse::<u64>().unwrap_or(0);
+    let guest = parts[9].parse::<u64>().unwrap_or(0);
+    let guest_nice = parts[10].parse::<u64>().unwrap_or(0);
+
+    let total_time =
+        user + nice + system + idle + iowait + irq + softirq + steal + guest + guest_nice;
+    let busy_time = user + nice + system + irq + softirq + steal + guest + guest_nice;
+    return CpuStat {
+        busy_time,
+        total_time,
     };
 }
 
@@ -338,6 +387,14 @@ impl SystemStat {
             lines.push(String::new());
             lines.push(String::from("# CPU"));
             lines.push(format!("Cores: {}", self.cpu_num));
+
+            let busy_delta = self.cpu.busy_time as i32 - previous_stat.cpu.busy_time as i32;
+            let total_delta = self.cpu.total_time as i32 - previous_stat.cpu.total_time as i32;
+            let usage: f64 = match total_delta {
+                0 => 0f64,
+                _ => busy_delta as f64 / total_delta as f64,
+            };
+            lines.push(format!("Usage: {}", usage.to_percent2()));
         }
 
         if self.disk_space_usage.is_some() {
