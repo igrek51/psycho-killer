@@ -67,13 +67,16 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
         KeyCode::Char('q') if app.window_focus == Browse => {
             app.quit();
         }
-        KeyCode::Char('r') if app.window_focus == Browse => {
-            app.refresh_processes();
-        }
         KeyCode::F(5) => {
             app.refresh_processes();
         }
+        KeyCode::Char('r') if app.window_focus == Browse => {
+            app.refresh_processes();
+        }
         KeyCode::F(6) => {
+            app.switch_ordering();
+        }
+        KeyCode::Char('s') if app.window_focus == Browse => {
             app.switch_ordering();
         }
         KeyCode::Char('j') if app.window_focus == SignalPick => {

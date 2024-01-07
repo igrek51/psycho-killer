@@ -10,6 +10,8 @@ PSycho KILLer is an interactive process manager and system resource monitor that
     <a href="https://docs.rs/crate/psycho-killer/">docs.rs</a>
 </div>
 
+![](./docs/img/screenshot1.png)
+
 ## Features
 - Quickly find and terminate processes in an interactive manner.
 - If a process remains active, kill it with sudo privileges.
