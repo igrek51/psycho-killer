@@ -18,10 +18,19 @@ PSycho KILLer is an interactive process manager and system resource monitor that
 - Monitor system resource usage, including `Dirty` and `Writeback` memory to keep an eye on ongoing copying.
 
 ## Installation
+### Cargo
 ```sh
 cargo install psycho-killer
 ```
 This will install `psycho` binary in Rust's Path.
+
+### Binary
+Alternatively, you can download the compiled binary:
+
+```sh
+curl -L https://github.com/igrek51/psycho-killer/releases/download/0.3.2/psycho -o ~/bin/psycho
+chmod +x ~/bin/psycho
+```
 
 ## Usage
 Launch the interactive process manager by running `psycho`.
