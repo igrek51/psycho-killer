@@ -12,6 +12,8 @@ use crate::numbers::{format_duration, ClampNumExt, PercentFormatterExt};
 use crate::strings::apply_scroll;
 use crate::sysinfo::ProcessStat;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.size();
     let w = area.width as f32;
@@ -63,7 +65,7 @@ fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
         .wrap(Wrap { trim: true })
         .block(
             Block::default()
-                .title("PSycho KILLer")
+                .title(format!("PSycho KILLer {}", VERSION))
                 .title_alignment(Alignment::Center)
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
@@ -111,7 +113,7 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
                 apply_scroll(&it.display_name, app.horizontal_scroll),
                 format_duration(it.run_time),
                 it.memory_usage.to_percent1(),
-                it.cpu_usage.to_percent0(),
+                it.cpu_usage.to_percent1(),
             ])
         })
         .collect();
@@ -122,13 +124,13 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
         .max()
         .unwrap_or(0) as i32;
     let w = area.width as i32;
-    let rest_width = (w - col_pid_length - 4 - 5 - 9 - 4 - 2 - 2).clamp_min(3); // -4 for padding, -2 for cursor, -2 for borders
+    let rest_width = (w - col_pid_length - 9 - 5 - 5 - 4 - 2 - 2).clamp_min(3); // -4 for padding, -2 for cursor, -2 for borders
     let widths = [
         Constraint::Length(col_pid_length as u16),
         Constraint::Min(rest_width as u16),
         Constraint::Max(9),
         Constraint::Max(5),
-        Constraint::Max(4),
+        Constraint::Max(5),
     ];
     let headers = match app.ordering {
         crate::appdata::Ordering::ByUptime => ["PID", "Name", "Uptime↓", "MEM", "CPU"],

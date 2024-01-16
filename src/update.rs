@@ -57,6 +57,13 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
             app.filter_text.pop();
             app.filter_processes();
         }
+        KeyCode::Char('w')
+            if key_event.modifiers == KeyModifiers::CONTROL
+                && app.window_focus == ProcessFilter =>
+        {
+            app.filter_text.pop();
+            app.filter_processes();
+        }
         KeyCode::Char(c) if app.window_focus == ProcessFilter => {
             app.filter_text.push(c);
             app.filter_processes();
@@ -64,7 +71,7 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
         KeyCode::Char('/') | KeyCode::F(4) if app.window_focus == Browse => {
             app.window_focus = ProcessFilter;
         }
-        KeyCode::Char('q') if app.window_focus == Browse => {
+        KeyCode::Char('q') if app.window_focus == Browse || app.window_focus == SystemStats => {
             app.quit();
         }
         KeyCode::F(5) => {

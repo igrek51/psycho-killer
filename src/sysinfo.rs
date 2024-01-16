@@ -106,7 +106,7 @@ pub struct CpuStat {
 }
 
 pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats {
-    sys.refresh_all();
+    sys.refresh_processes();
 
     let mut processes = Vec::new();
     for (pid, process) in sys.processes() {
