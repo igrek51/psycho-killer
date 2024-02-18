@@ -5,7 +5,7 @@ use anyhow::{anyhow, Context, Result};
 use itertools::Itertools;
 use sysinfo::{ComponentExt, DiskExt, NetworkExt, ProcessExt, System, SystemExt, Uid};
 
-use crate::numbers::{BytesFormatterExt, PercentFormatterExt};
+use crate::numbers::{BytesFormatterExt, ClampNumExt, PercentFormatterExt};
 
 #[derive(Debug, Default)]
 pub struct SystemProcStats {
@@ -103,6 +103,14 @@ pub struct PartitionUsage {
 pub struct CpuStat {
     pub busy_time: u64,
     pub total_time: u64,
+    pub load_avg: CpuLoadAvg,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct CpuLoadAvg {
+    pub load_1m: f64,  // 0-100%
+    pub load_5m: f64,  // 0-100%
+    pub load_15m: f64, // 0-100%
 }
 
 pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats {
@@ -118,8 +126,7 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
             _ => proc_name.clone(),
         };
         let mem_usage_fraction: f64 = process.memory() as f64 / 1024f64 / memstat.total as f64;
-        let disk_usage = process.disk_usage().total_written_bytes as f64
-            + process.disk_usage().total_read_bytes as f64;
+        let disk_usage = process.disk_usage().total_written_bytes as f64 + process.disk_usage().total_read_bytes as f64;
 
         let process_stat = ProcessStat {
             pid: pid.to_string(),
@@ -150,7 +157,7 @@ pub fn get_system_stats() -> SystemStat {
 
     let memory: MemoryStat = read_memory_stats();
     let disk: DiskStat = read_disk_stats();
-    let cpu: CpuStat = read_cpu_stats().unwrap_or_else(|_| CpuStat::default());
+    let cpu: CpuStat = read_cpu_stats(cpu_num).unwrap_or_else(|_| CpuStat::default());
 
     let mut network_total_tx: u64 = 0;
     let mut network_total_rx: u64 = 0;
@@ -204,10 +211,7 @@ pub fn get_system_stats() -> SystemStat {
 }
 
 fn is_net_iface_physical(name: &str) -> bool {
-    name.starts_with("enp")
-        || name.starts_with("eth")
-        || name.starts_with("wlp")
-        || name.starts_with("wlan")
+    name.starts_with("enp") || name.starts_with("eth") || name.starts_with("wlp") || name.starts_with("wlan")
 }
 
 fn include_mount_point(mount_point: &str) -> bool {
@@ -318,7 +322,7 @@ fn read_disk_stats() -> DiskStat {
     };
 }
 
-fn read_cpu_stats() -> Result<CpuStat> {
+fn read_cpu_stats(cpu_num: usize) -> Result<CpuStat> {
     let lines: Vec<String> = std::fs::read_to_string("/proc/stat")
         .context("reading /proc/stat")?
         .split('\n')
@@ -349,13 +353,33 @@ fn read_cpu_stats() -> Result<CpuStat> {
     let guest = parts[9].parse::<u64>().unwrap_or(0);
     let guest_nice = parts[10].parse::<u64>().unwrap_or(0);
 
-    let total_time =
-        user + nice + system + idle + iowait + irq + softirq + steal + guest + guest_nice;
+    let total_time = user + nice + system + idle + iowait + irq + softirq + steal + guest + guest_nice;
     let busy_time = user + nice + system + irq + softirq + steal + guest + guest_nice;
-    return Ok(CpuStat {
+
+    let load_avg = read_cpu_load_avg(cpu_num).unwrap_or_else(|_| CpuLoadAvg::default());
+
+    Ok(CpuStat {
         busy_time,
         total_time,
-    });
+        load_avg,
+    })
+}
+
+fn read_cpu_load_avg(cpu_num: usize) -> Result<CpuLoadAvg> {
+    let line: String = std::fs::read_to_string("/proc/loadavg").context("reading /proc/loadavg")?;
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    if parts.len() < 3 {
+        return Err(anyhow!("not enough parts"));
+    }
+    let cpu_num = (cpu_num as f64).clamp_min(1.into());
+    let load_1m = parts[0].parse::<f64>().unwrap_or(0.into()) / cpu_num;
+    let load_5m = parts[1].parse::<f64>().unwrap_or(0.into()) / cpu_num;
+    let load_15m = parts[2].parse::<f64>().unwrap_or(0.into()) / cpu_num;
+    Ok(CpuLoadAvg {
+        load_1m,
+        load_5m,
+        load_15m,
+    })
 }
 
 impl SystemStat {
@@ -400,8 +424,14 @@ impl SystemStat {
                 0 => 0f64,
                 _ => busy_delta as f64 / total_delta as f64,
             };
-            lines.push(format!("Usage: {}", usage.to_percent2()));
+            lines.push(format!("Usage: {}", usage.to_percent2())); // 0-100%
         }
+        lines.push(format!("1m Load average: {}", self.cpu.load_avg.load_1m.to_percent2()));
+        lines.push(format!("5m Load average: {}", self.cpu.load_avg.load_5m.to_percent2()));
+        lines.push(format!(
+            "15m Load average: {}",
+            self.cpu.load_avg.load_15m.to_percent2()
+        ));
 
         if self.disk_space_usages.len() > 0 {
             lines.push(String::new());
@@ -422,10 +452,8 @@ impl SystemStat {
             lines.push(String::new());
             lines.push(String::from("# Disk IO utilization"));
 
-            let disk_read_delta =
-                self.disk.time_reading_ms as i32 - previous_stat.disk.time_reading_ms as i32;
-            let disk_write_delta =
-                self.disk.time_writing_ms as i32 - previous_stat.disk.time_writing_ms as i32;
+            let disk_read_delta = self.disk.time_reading_ms as i32 - previous_stat.disk.time_reading_ms as i32;
+            let disk_write_delta = self.disk.time_writing_ms as i32 - previous_stat.disk.time_writing_ms as i32;
             let time_delta = self.time_ms - previous_stat.time_ms;
             if time_delta > 0 {
                 lines.push(format!(
