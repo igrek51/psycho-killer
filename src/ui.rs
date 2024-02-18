@@ -21,19 +21,13 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     let mut l_width = (w - r_width).clamp_min(w * 0.4);
     match app.window_focus {
         WindowFocus::ProcessFilter | WindowFocus::Browse | WindowFocus::SignalPick => {
-            l_width = l_width
-                .clamp_min(w * 0.75)
-                .clamp_min(58.)
-                .clamp_max(w * 0.9);
+            l_width = l_width.clamp_min(w * 0.75).clamp_min(58.).clamp_max(w * 0.9);
         }
         WindowFocus::SystemStats => {}
     }
     let layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(vec![
-            Constraint::Min(l_width as u16),
-            Constraint::Min(r_width as u16),
-        ])
+        .constraints(vec![Constraint::Min(l_width as u16), Constraint::Min(r_width as u16)])
         .split(area);
 
     render_left(app, frame, layout[0]);
@@ -47,11 +41,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(vec![
-            Constraint::Max(3),
-            Constraint::Max(3),
-            Constraint::Min(5),
-        ])
+        .constraints(vec![Constraint::Max(3), Constraint::Max(3), Constraint::Min(5)])
         .split(area);
 
     render_info_panel(app, frame, layout[0]);
@@ -113,7 +103,7 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
                 apply_scroll(&it.display_name, app.horizontal_scroll),
                 format_duration(it.run_time),
                 it.memory_usage.to_percent1(),
-                it.cpu_usage.to_percent1(),
+                it.cpu_usage.to_percent_len5(),
             ])
         })
         .collect();
@@ -124,13 +114,16 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
         .max()
         .unwrap_or(0) as i32;
     let w = area.width as i32;
-    let rest_width = (w - col_pid_length - 9 - 5 - 5 - 4 - 2 - 2).clamp_min(3); // -4 for padding, -2 for cursor, -2 for borders
+    let uptime_col_w = 9;
+    let mem_col_w = 5;
+    let cpu_col_w = 6;
+    let rest_width = (w - col_pid_length - uptime_col_w - mem_col_w - cpu_col_w - 4 - 2 - 2).clamp_min(3); // -4 for padding, -2 for cursor, -2 for borders
     let widths = [
-        Constraint::Length(col_pid_length as u16),
-        Constraint::Min(rest_width as u16),
-        Constraint::Max(9),
-        Constraint::Max(5),
-        Constraint::Max(5),
+        Constraint::Length(col_pid_length as u16), // PID
+        Constraint::Min(rest_width as u16),        // Name
+        Constraint::Max(uptime_col_w as u16),      // Uptime
+        Constraint::Max(mem_col_w as u16),         // MEM
+        Constraint::Max(cpu_col_w as u16),         // CPU
     ];
     let headers = match app.ordering {
         crate::appdata::Ordering::ByUptime => ["PID", "Name", "Uptime↓", "MEM", "CPU"],
@@ -143,11 +136,7 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
     }
     let table = Table::new(rows, widths)
         .column_spacing(1)
-        .header(
-            Row::new(headers)
-                .style(Style::new().bold())
-                .bottom_margin(1),
-        )
+        .header(Row::new(headers).style(Style::new().bold()).bottom_margin(1))
         .block(title.borders(Borders::ALL))
         .style(Style::default().fg(Color::White))
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
@@ -214,20 +203,10 @@ fn render_signal_panel(app: &mut App, frame: &mut Frame) {
 fn centered_rect(w: u16, h: u16, r: Rect) -> Rect {
     let x_gap = (r.width as i32 - w as i32).clamp_min(0) / 2;
     let y_gap = (r.height as i32 - h as i32).clamp_min(0) / 2;
-    let popup_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(y_gap as u16),
-            Constraint::Length(h),
-            Constraint::Min(y_gap as u16),
-        ])
-        .split(r);
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Length(x_gap as u16),
-            Constraint::Length(w),
-            Constraint::Min(x_gap as u16),
-        ])
-        .split(popup_layout[1])[1]
+    Rect {
+        x: r.x + x_gap as u16,
+        y: r.y + y_gap as u16,
+        width: w,
+        height: h,
+    }
 }

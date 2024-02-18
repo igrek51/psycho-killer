@@ -2,10 +2,9 @@ use std::time::SystemTime;
 use std::{collections::HashMap, ops::Deref};
 
 use anyhow::{anyhow, Context, Result};
-use itertools::Itertools;
 use sysinfo::{ComponentExt, DiskExt, NetworkExt, ProcessExt, System, SystemExt, Uid};
 
-use crate::numbers::{BytesFormatterExt, ClampNumExt, PercentFormatterExt};
+use crate::numbers::ClampNumExt;
 
 #[derive(Debug, Default)]
 pub struct SystemProcStats {
@@ -38,7 +37,7 @@ impl ProcessStat {
 
 #[derive(Debug, Default, Clone)]
 pub struct SystemStat {
-    time_ms: u64,
+    pub time_ms: u64,
 
     pub os_version: String,
     pub host_name: String,
@@ -383,111 +382,4 @@ fn read_cpu_load_avg(cpu_num: usize) -> Result<CpuLoadAvg> {
         load_5m,
         load_15m,
     })
-}
-
-impl SystemStat {
-    pub fn summarize(&self, init_stat: &SystemStat, previous_stat: &SystemStat) -> String {
-        let mut lines = Vec::new();
-        lines.push(format!("OS: {}", self.os_version));
-        lines.push(format!("Host: {}", self.host_name));
-
-        lines.push(String::new());
-        lines.push(String::from("# Memory"));
-        lines.push(format!(
-            "Used: {} / {} ({})",
-            self.memory.used.to_kilobytes(),
-            self.memory.total.to_kilobytes(),
-            self.memory.usage.to_percent1(),
-        ));
-        lines.push(format!("Cache: {}", self.memory.cache.to_kilobytes()));
-        lines.push(format!("Buffers: {}", self.memory.buffers.to_kilobytes()));
-        lines.push(format!(
-            "Dirty & Writeback: {}",
-            self.memory.dirty_writeback().to_kilobytes()
-        ));
-
-        if self.memory.swap_total > 0 {
-            lines.push(format!(
-                "Swap: {} / {} ({})",
-                self.memory.swap_used.to_kilobytes(),
-                self.memory.swap_total.to_kilobytes(),
-                self.memory.swap_usage.to_percent1(),
-            ));
-        }
-
-        lines.push(String::new());
-        lines.push(String::from("# CPU"));
-        if self.cpu_num > 0 {
-            lines.push(format!("Cores: {}", self.cpu_num));
-        }
-        if self.cpu.total_time > 0 {
-            let busy_delta = self.cpu.busy_time as i32 - previous_stat.cpu.busy_time as i32;
-            let total_delta = self.cpu.total_time as i32 - previous_stat.cpu.total_time as i32;
-            let usage: f64 = match total_delta {
-                0 => 0f64,
-                _ => busy_delta as f64 / total_delta as f64,
-            };
-            lines.push(format!("Usage: {}", usage.to_percent2())); // 0-100%
-        }
-        lines.push(format!("1m Load average: {}", self.cpu.load_avg.load_1m.to_percent2()));
-        lines.push(format!("5m Load average: {}", self.cpu.load_avg.load_5m.to_percent2()));
-        lines.push(format!(
-            "15m Load average: {}",
-            self.cpu.load_avg.load_15m.to_percent2()
-        ));
-
-        if self.disk_space_usages.len() > 0 {
-            lines.push(String::new());
-            lines.push(String::from("# Disk space usage"));
-            for name in self.disk_space_usages.keys().sorted() {
-                let usage: PartitionUsage = self.disk_space_usages[name].clone();
-                lines.push(format!(
-                    "{}: {} / {} ({})",
-                    name,
-                    usage.used.to_bytes(),
-                    usage.total.to_bytes(),
-                    usage.usage.to_percent1(),
-                ));
-            }
-        }
-
-        if self.has_io_stats() {
-            lines.push(String::new());
-            lines.push(String::from("# Disk IO utilization"));
-
-            let disk_read_delta = self.disk.time_reading_ms as i32 - previous_stat.disk.time_reading_ms as i32;
-            let disk_write_delta = self.disk.time_writing_ms as i32 - previous_stat.disk.time_writing_ms as i32;
-            let time_delta = self.time_ms - previous_stat.time_ms;
-            if time_delta > 0 {
-                lines.push(format!(
-                    "Reading: {}",
-                    (disk_read_delta as f64 / time_delta as f64).to_percent1(),
-                ));
-                lines.push(format!(
-                    "Writing: {}",
-                    (disk_write_delta as f64 / time_delta as f64).to_percent1(),
-                ));
-            }
-        }
-
-        if self.network_total_rx + self.network_total_tx > 0 {
-            lines.push(String::new());
-            lines.push(String::from("# Network transfer so far"));
-            let network_tx_delta = self.network_total_tx as i32 - init_stat.network_total_tx as i32;
-            let network_rx_delta = self.network_total_rx as i32 - init_stat.network_total_rx as i32;
-            lines.push(format!("Received: {}", network_rx_delta.to_bytes()));
-            lines.push(format!("Transmitted: {}", network_tx_delta.to_bytes()));
-        }
-
-        if self.temperatures.len() > 0 {
-            lines.push(String::new());
-            lines.push(String::from("# Temperatures"));
-            for label in self.temperatures.keys().sorted() {
-                let temperature = self.temperatures[label];
-                lines.push(format!("{}: {:.0}°C", label, temperature.round()));
-            }
-        }
-
-        lines.join("\n")
-    }
 }

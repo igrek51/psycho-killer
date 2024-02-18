@@ -1,4 +1,5 @@
 use anyhow::Result;
+use ratatui::text::Line;
 use ratatui::widgets::TableState;
 use signal_hook::{consts::SIGINT, consts::SIGTERM, iterator::Signals};
 use std::cmp::Ordering::Equal;
@@ -136,9 +137,7 @@ impl App {
             .proc_stats
             .processes
             .iter()
-            .filter(|it: &&ProcessStat| {
-                contains_all_words(it.search_name().as_str(), &filter_words)
-            })
+            .filter(|it: &&ProcessStat| contains_all_words(it.search_name().as_str(), &filter_words))
             .cloned()
             .collect();
         let sort_fn = self.get_sort_fn();
@@ -190,13 +189,13 @@ impl App {
         self.refresh_processes();
     }
 
-    pub fn format_sys_stats(&self) -> String {
+    pub fn format_sys_stats(&self) -> Vec<Line> {
         self.sys_stat
             .summarize(&self.init_stat, &self.previous_stat)
-            .lines()
+            .iter()
             .skip(self.sysinfo_scroll as usize)
-            .collect::<Vec<&str>>()
-            .join("\n")
+            .cloned()
+            .collect()
     }
 }
 

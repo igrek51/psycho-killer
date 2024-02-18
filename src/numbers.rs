@@ -79,6 +79,7 @@ pub trait PercentFormatterExt {
     fn to_percent2(&self) -> String;
     fn to_percent0(&self) -> String;
     fn to_percent1(&self) -> String;
+    fn to_percent_len5(&self) -> String;
 }
 
 impl PercentFormatterExt for f64 {
@@ -90,6 +91,13 @@ impl PercentFormatterExt for f64 {
     }
     fn to_percent1(&self) -> String {
         format!("{:.1}%", *self * 100f64)
+    }
+    fn to_percent_len5(&self) -> String {
+        if *self >= 1f64 {
+            format!("{:.0}%", *self * 100f64)
+        } else {
+            format!("{:.1}%", *self * 100f64)
+        }
     }
 }
 

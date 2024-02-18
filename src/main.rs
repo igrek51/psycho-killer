@@ -5,6 +5,7 @@ mod kill;
 mod numbers;
 mod strings;
 mod sysinfo;
+mod sysinfo_render;
 mod tui;
 mod ui;
 mod update;
