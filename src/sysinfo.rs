@@ -22,7 +22,7 @@ pub struct ProcessStat {
     pub cmd: String,
     // Full executable path: /opt/google/chrome/chrome
     pub exe: String,
-    pub cpu_usage: f64,    // fraction of 1 core
+    pub cpu_usage: f64,    // fraction of 1 core, 0-CORES
     pub memory_usage: f64, // fraction of total memory
     pub disk_usage: f64,
     pub user_id: Option<u32>,
@@ -127,6 +127,7 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
         };
         let mem_usage_fraction: f64 = process.memory() as f64 / 1024f64 / memstat.total as f64;
         let disk_usage = process.disk_usage().total_written_bytes as f64 + process.disk_usage().total_read_bytes as f64;
+        let cpu_usage = process.cpu_usage() as f64 / 100f64;
 
         let process_stat = ProcessStat {
             pid: pid.to_string(),
@@ -134,7 +135,7 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
             name: proc_name,
             cmd,
             exe: process.exe().to_string_lossy().to_string(),
-            cpu_usage: process.cpu_usage() as f64 / 100f64,
+            cpu_usage,
             memory_usage: mem_usage_fraction,
             disk_usage,
             user_id,
@@ -149,7 +150,9 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
 
 pub fn get_system_stats() -> SystemStat {
     let mut sys = System::new_all();
-    sys.refresh_all();
+    sys.refresh_system();
+    sys.refresh_disks();
+    sys.refresh_networks();
 
     let os_version = sys.long_os_version().unwrap_or(String::new());
     let host_name = sys.host_name().unwrap_or(String::new());

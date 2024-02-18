@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::process::{Command, Output};
 
 #[derive(Debug, Clone)]
 pub struct KillSignal {
