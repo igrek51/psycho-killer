@@ -27,6 +27,8 @@ pub struct ProcessStat {
     pub user_id: Option<u32>,
     pub display_name: String,
     pub run_time: u64, // in seconds
+    pub time_ms: u64,
+    pub cpu_time: f64, // in seconds
 }
 
 impl ProcessStat {
@@ -115,6 +117,8 @@ pub struct CpuLoadAvg {
 pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats {
     sys.refresh_processes();
 
+    let clk_tck = 100f64; // clock ticks per second
+
     let mut processes = Vec::new();
     for (pid, process) in sys.processes() {
         let user_id: Option<u32> = process.user_id().map(|uid: &Uid| *uid.deref());
@@ -126,6 +130,7 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
         };
         let mem_usage_fraction: f64 = process.memory() as f64 / 1024f64 / memstat.total as f64;
         let disk_usage = process.disk_usage().total_written_bytes as f64 + process.disk_usage().total_read_bytes as f64;
+        let cpu_time = read_cpu_time(pid.to_string()).unwrap_or(0) as f64 / clk_tck;
         let cpu_usage = process.cpu_usage() as f64 / 100f64;
 
         let process_stat = ProcessStat {
@@ -140,6 +145,11 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
             user_id,
             display_name,
             run_time: process.run_time(),
+            time_ms: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64,
+            cpu_time,
         };
         processes.push(process_stat);
     }
@@ -365,6 +375,17 @@ fn read_cpu_stats(cpu_num: usize) -> Result<CpuStat> {
         total_time,
         load_avg,
     })
+}
+
+fn read_cpu_time(pid: String) -> Result<u64> {
+    let line: String = std::fs::read_to_string(format!("/proc/{}/stat", pid)).context("reading /proc/PID/stat")?;
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    if parts.len() < 14 {
+        return Err(anyhow!("not enough parts"));
+    }
+    let utime = parts[13].parse::<u64>().unwrap_or(0);
+    let stime = parts[14].parse::<u64>().unwrap_or(0);
+    Ok(utime + stime)
 }
 
 fn read_cpu_load_avg(cpu_num: usize) -> Result<CpuLoadAvg> {
