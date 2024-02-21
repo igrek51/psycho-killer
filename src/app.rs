@@ -9,6 +9,7 @@ use sysinfo::{System, SystemExt};
 
 use crate::appdata::{Ordering, WindowFocus};
 use crate::kill::{generate_knwon_signals, kill_pid, KillSignal};
+use crate::logs::print_logs;
 use crate::numbers::ClampNumExt;
 use crate::sysinfo::{get_proc_stats, get_system_stats, ProcessStat, SystemProcStats, SystemStat};
 use crate::tui::Tui;
@@ -61,6 +62,7 @@ impl App {
         }
 
         tui.exit()?;
+        print_logs();
         Ok(())
     }
 

@@ -2,8 +2,10 @@ use std::time::SystemTime;
 use std::{collections::HashMap, ops::Deref};
 
 use anyhow::{anyhow, Context, Result};
+use libc::{sysconf, _SC_CLK_TCK};
 use sysinfo::{ComponentExt, DiskExt, NetworkExt, ProcessExt, System, SystemExt, Uid};
 
+use crate::logs::log;
 use crate::numbers::ClampNumExt;
 use crate::numbers::PercentFormatterExt;
 
@@ -131,8 +133,7 @@ pub struct CpuLoadAvg {
 pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats {
     sys.refresh_processes();
 
-    let clk_tck = 100f64; // clock ticks per second
-
+    let clk_tck: i64 = get_clock_ticks();
     let mut processes = Vec::new();
     for (pid, process) in sys.processes() {
         let user_id: Option<u32> = process.user_id().map(|uid: &Uid| *uid.deref());
@@ -144,7 +145,7 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
         };
         let mem_usage_fraction: f64 = process.memory() as f64 / 1024f64 / memstat.total as f64;
         let disk_usage = process.disk_usage().total_written_bytes as f64 + process.disk_usage().total_read_bytes as f64;
-        let cpu_time = read_cpu_time(pid.to_string()).unwrap_or(0) as f64 / clk_tck;
+        let cpu_time = read_cpu_time(pid.to_string()).unwrap_or(0) as f64 / clk_tck as f64;
         let cpu_usage = process.cpu_usage() as f64 / 100f64;
 
         let process_stat = ProcessStat {
@@ -416,4 +417,13 @@ fn read_cpu_load_avg(cpu_num: usize) -> Result<CpuLoadAvg> {
         load_5m,
         load_15m,
     })
+}
+
+fn get_clock_ticks() -> i64 {
+    let clk_tck: i64 = unsafe { sysconf(_SC_CLK_TCK) }; // clock ticks per second
+    if clk_tck == -1 {
+        log("Error: getting clock ticks per second");
+        return 100;
+    }
+    clk_tck
 }

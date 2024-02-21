@@ -2,6 +2,7 @@ mod app;
 mod appdata;
 mod event;
 mod kill;
+mod logs;
 mod numbers;
 mod strings;
 mod sysinfo;
