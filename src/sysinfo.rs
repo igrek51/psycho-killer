@@ -5,8 +5,9 @@ use anyhow::{anyhow, Context, Result};
 use sysinfo::{ComponentExt, DiskExt, NetworkExt, ProcessExt, System, SystemExt, Uid};
 
 use crate::numbers::ClampNumExt;
+use crate::numbers::PercentFormatterExt;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct SystemProcStats {
     pub processes: Vec<ProcessStat>,
 }
@@ -34,6 +35,19 @@ pub struct ProcessStat {
 impl ProcessStat {
     pub fn search_name(&self) -> String {
         format!("{} {}", self.pid, self.display_name)
+    }
+
+    pub fn format_cpu_usage(&self, previous_processes: &Vec<ProcessStat>) -> String {
+        let previous_proc: Option<&ProcessStat> = previous_processes.iter().find(|p| p.pid == self.pid);
+        if previous_proc.is_none() {
+            return self.cpu_usage.to_percent_len5();
+        }
+        let delta_cpu_ms = (self.cpu_time - previous_proc.unwrap().cpu_time) * 1000f64;
+        let delta_time_ms = self.time_ms - previous_proc.unwrap().time_ms;
+        if delta_time_ms == 0 {
+            return "0%".to_string();
+        }
+        (delta_cpu_ms / delta_time_ms as f64).to_percent_len5()
     }
 }
 

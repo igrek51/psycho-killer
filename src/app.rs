@@ -19,6 +19,7 @@ pub struct App {
     pub window_focus: WindowFocus,
     pub process_cursor: usize,
     pub proc_stats: SystemProcStats,
+    pub previous_proc_stats: SystemProcStats,
     pub sys_stat: SystemStat,
     pub previous_stat: SystemStat,
     pub init_stat: SystemStat,
@@ -80,6 +81,7 @@ impl App {
     }
 
     pub fn refresh_processes(&mut self) {
+        self.previous_proc_stats = self.proc_stats.clone();
         self.proc_stats = get_proc_stats(&self.sys_stat.memory, &mut self.sysinfo_sys);
         self.filter_processes();
     }

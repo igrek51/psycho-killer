@@ -103,7 +103,7 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
                 apply_scroll(&it.display_name, app.horizontal_scroll),
                 format_duration(it.run_time),
                 it.memory_usage.to_percent1(),
-                it.cpu_usage.to_percent_len5(),
+                it.format_cpu_usage(&app.previous_proc_stats.processes),
             ])
         })
         .collect();
