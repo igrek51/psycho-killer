@@ -77,7 +77,7 @@ impl App {
     }
 
     pub fn refresh_system_stats(&mut self) {
-        self.sys_stat = get_system_stats();
+        self.sys_stat = get_system_stats(&mut self.sysinfo_sys);
     }
 
     pub fn refresh_processes(&mut self) {

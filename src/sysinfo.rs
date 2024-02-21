@@ -171,8 +171,7 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
     SystemProcStats { processes }
 }
 
-pub fn get_system_stats() -> SystemStat {
-    let mut sys = System::new_all();
+pub fn get_system_stats(sys: &mut System) -> SystemStat {
     sys.refresh_system();
     sys.refresh_disks();
     sys.refresh_networks();
