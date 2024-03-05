@@ -13,9 +13,15 @@ PSycho KILLer is an interactive process manager and system resource monitor that
 ![](./docs/img/screenshot1.png)
 
 ## Features
-- Quickly find and terminate processes in an interactive manner.
-- If a process remains active, kill it with sudo privileges.
-- Monitor system resource usage, including `Dirty` and `Writeback` memory to keep an eye on ongoing copying.
+- "Seek & Destroy" - Quickly find and terminate processes in an interactive manner.
+- If a process still remains alive, kill it with sudo privileges and stronger signals.
+- Monitor usage of system resources:
+  - Memory, including `Dirty` and `Writeback` memory to keep an eye on ongoing copying
+  - CPU
+  - Disk space usage
+  - Disk IO utliziation
+  - Network transfer
+  - Temperatures
 
 ## Installation
 ### Cargo
