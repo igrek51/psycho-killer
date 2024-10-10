@@ -30,6 +30,7 @@ impl App {
     pub fn refresh_processes(&mut self) {
         self.previous_proc_stats = self.proc_stats.clone();
         self.proc_stats = get_proc_stats(&self.sys_stat.memory, &mut self.sysinfo_sys);
+        self.enrich_proc_stats();
         self.filter_processes();
     }
 
@@ -143,7 +144,7 @@ impl App {
                 self.refresh_processes();
             }
             Operation::ShowDetails => {
-                self.info_message = Some(process.details(self));
+                self.info_message = Some(process.details());
             }
         }
 
@@ -197,5 +198,11 @@ impl App {
     pub fn toggle_group_by_exe(&mut self) {
         self.group_by_exe = !self.group_by_exe;
         self.filter_processes();
+    }
+
+    pub fn enrich_proc_stats(&mut self) {
+        for proc_stat in &mut self.proc_stats.processes {
+            proc_stat.cpu_usage = proc_stat.calculate_cpu_usage(&self.previous_proc_stats.processes);
+        }
     }
 }

@@ -78,8 +78,14 @@ pub fn on_key_browse(app: &mut App, key_event: KeyEvent) {
 pub fn on_key_process_filter(app: &mut App, key_event: KeyEvent) {
     match key_event.code {
         KeyCode::Esc => app.window_focus = Browse,
-        KeyCode::Down => app.move_cursor(1),
-        KeyCode::Up => app.move_cursor(-1),
+        KeyCode::Down => {
+            app.move_cursor(1);
+            app.window_focus = Browse;
+        }
+        KeyCode::Up => {
+            app.move_cursor(-1);
+            app.window_focus = Browse;
+        }
         KeyCode::PageDown => app.move_cursor(10),
         KeyCode::PageUp => app.move_cursor(-10),
         KeyCode::Home => app.move_cursor(-(app.filtered_processes.len() as i32)),
