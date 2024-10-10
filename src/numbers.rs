@@ -77,7 +77,6 @@ impl BytesFormatterExt for i64 {
 
 pub trait PercentFormatterExt {
     fn to_percent2(&self) -> String;
-    fn to_percent0(&self) -> String;
     fn to_percent1(&self) -> String;
     fn to_percent_len5(&self) -> String;
 }
@@ -85,9 +84,6 @@ pub trait PercentFormatterExt {
 impl PercentFormatterExt for f64 {
     fn to_percent2(&self) -> String {
         format!("{:.2}%", *self * 100f64)
-    }
-    fn to_percent0(&self) -> String {
-        format!("{:.0}%", *self * 100f64)
     }
     fn to_percent1(&self) -> String {
         format!("{:.1}%", *self * 100f64)

@@ -5,37 +5,38 @@ use std::{io, panic};
 
 pub type CrosstermTerminal = ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stderr>>;
 
-use crate::{app::App, event::Event, event::EventHandler, ui, update::update};
+use crate::{
+    app::App,
+    event::{Event, EventHandler},
+    ui,
+    update::update,
+};
 
-/// Representation of a terminal user interface.
-///
-/// It is responsible for setting up the terminal,
-/// initializing the interface and handling the draw events.
+#[derive(Debug)]
 pub struct Tui {
     terminal: CrosstermTerminal,
-    pub events: EventHandler,
+    pub event_handler: EventHandler,
 }
 
 impl Tui {
     pub fn new() -> Self {
         let backend = CrosstermBackend::new(std::io::stderr());
         let terminal: CrosstermTerminal = Terminal::new(backend).unwrap();
-        let events: EventHandler = EventHandler::new(1500);
-        Self { terminal, events }
+        let event_handler: EventHandler = EventHandler::new(3000).listen();
+        Self {
+            terminal,
+            event_handler,
+        }
     }
 
-    /// Initializes the terminal interface.
-    ///
-    /// It enables the raw mode and sets terminal properties.
     pub fn enter(&mut self) -> Result<()> {
-        terminal::enable_raw_mode()?;
+        terminal::enable_raw_mode()?; // https://docs.rs/crossterm/latest/crossterm/terminal/index.html#raw-mode
         crossterm::execute!(io::stderr(), EnterAlternateScreen,)?;
+        self.event_handler.resume();
 
-        // Define a custom panic hook to reset the terminal properties.
-        // This way, you won't have your terminal messed up if an unexpected error happens.
         let panic_hook = panic::take_hook();
         panic::set_hook(Box::new(move |panic| {
-            Self::reset().expect("failed to reset the terminal");
+            Self::fatal_exit().expect("failed to reset the terminal");
             panic_hook(panic);
         }));
 
@@ -51,29 +52,24 @@ impl Tui {
     }
 
     pub fn handle_events(&mut self, app: &mut App) -> Result<()> {
-        match self.events.next()? {
+        match self.event_handler.next()? {
             Event::Tick => app.tick(),
             Event::Key(key_event) => update(app, key_event),
-            Event::Resize(_, _) => {}
+            Event::Resize => {}
         };
         Ok(())
     }
 
-    /// Resets the terminal interface.
-    ///
-    /// This function is also used for the panic hook to revert
-    /// the terminal properties if unexpected errors occur.
-    fn reset() -> Result<()> {
+    fn fatal_exit() -> Result<()> {
         terminal::disable_raw_mode()?;
         crossterm::execute!(io::stderr(), LeaveAlternateScreen,)?;
         Ok(())
     }
 
-    /// Exits the terminal interface.
-    ///
-    /// It disables the raw mode and reverts back the terminal properties.
     pub fn exit(&mut self) -> Result<()> {
-        Self::reset()?;
+        self.event_handler.suspend();
+        terminal::disable_raw_mode()?;
+        crossterm::execute!(io::stderr(), LeaveAlternateScreen,)?;
         Ok(())
     }
 }

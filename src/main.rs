@@ -1,4 +1,5 @@
 mod app;
+mod app_logic;
 mod appdata;
 mod event;
 mod kill;
@@ -11,12 +12,12 @@ mod tui;
 mod ui;
 mod update;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use crate::app::App;
 
 fn main() -> Result<()> {
     let mut app = App::new();
-    app.run()?;
+    app.run().context("app failed")?;
     Ok(())
 }

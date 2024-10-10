@@ -36,6 +36,12 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     if app.window_focus == WindowFocus::SignalPick {
         render_signal_panel(app, frame);
     }
+    if app.info_message.is_some() {
+        render_info_popup(app, frame);
+    }
+    if app.error_message.is_some() {
+        render_error_popup(app, frame);
+    }
 }
 
 fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
@@ -50,7 +56,8 @@ fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
-    let p_text = "`/` to filter processes. `F5` to refresh list. `F6` to sort. `Enter` to confirm. `Esc` to exit.";
+    let p_text =
+        "`Ctrl+F` to filter processes. `R` to refresh list. `S` to sort. `Enter` to confirm. `?` for more controls.";
     let widget = Paragraph::new(p_text)
         .wrap(Wrap { trim: true })
         .block(
@@ -75,7 +82,7 @@ fn render_filter_panel(app: &mut App, frame: &mut Frame, area: Rect) {
         WindowFocus::ProcessFilter => Color::LightYellow,
         _ => Color::White,
     };
-    let mut title = Block::default().title("Filter (`/`)");
+    let mut title = Block::default().title("Filter (`Ctrl+F`)");
     if app.window_focus == WindowFocus::ProcessFilter {
         title = title.title_style(Style::new().bold());
     }
@@ -130,14 +137,25 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
         crate::appdata::Ordering::ByMemory => ["PID", "Name", "Uptime", "MEM↑", "CPU"],
         crate::appdata::Ordering::ByCpu => ["PID", "Name", "Uptime", "MEM", "CPU↑"],
     };
+    let panel_color = match app.window_focus {
+        WindowFocus::Browse => Color::LightYellow,
+        _ => Color::White,
+    };
     let mut title = Block::default().title("Running Processes");
     if app.window_focus == WindowFocus::Browse {
         title = title.title_style(Style::new().bold());
     }
+
     let table = Table::new(rows, widths)
         .column_spacing(1)
         .header(Row::new(headers).style(Style::new().bold()).bottom_margin(1))
-        .block(title.borders(Borders::ALL))
+        .block(
+            title
+                .title_alignment(Alignment::Center)
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(panel_color)),
+        )
         .style(Style::default().fg(Color::White))
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">>");
@@ -198,6 +216,78 @@ fn render_signal_panel(app: &mut App, frame: &mut Frame) {
     let buffer = frame.buffer_mut();
     Clear.render(area, buffer);
     frame.render_stateful_widget(widget, area, &mut list_state);
+}
+
+fn render_error_popup(app: &mut App, frame: &mut Frame) {
+    if app.error_message.is_none() {
+        return;
+    }
+    let error_message: String = app.error_message.clone().unwrap();
+
+    let title = Block::default()
+        .title("Error")
+        .title_style(Style::new().bold())
+        .title_alignment(Alignment::Center)
+        .borders(Borders::ALL)
+        .bg(Color::Red)
+        .border_type(BorderType::Rounded);
+    let error_window = Paragraph::new(error_message)
+        .wrap(Wrap { trim: true })
+        .block(title)
+        .style(Style::default().fg(Color::White));
+    let ok_label = Paragraph::new("OK")
+        .style(Style::default().bold().fg(Color::LightRed).bg(Color::White))
+        .alignment(Alignment::Center);
+
+    let width: u16 = (frame.size().width as f32 * 0.75f32) as u16;
+    let height: u16 = frame.size().height / 2;
+    let area = centered_rect(width, height, frame.size());
+    let ok_label_area = Rect {
+        x: area.x + 1,
+        y: area.y + area.height - 2,
+        width: area.width - 2,
+        height: 1,
+    };
+    let buffer = frame.buffer_mut();
+    Clear.render(area, buffer);
+    frame.render_widget(error_window, area);
+    frame.render_widget(ok_label, ok_label_area);
+}
+
+fn render_info_popup(app: &mut App, frame: &mut Frame) {
+    if app.info_message.is_none() {
+        return;
+    }
+    let info_message: String = app.info_message.clone().unwrap();
+
+    let title = Block::default()
+        .title("Info")
+        .title_style(Style::new().bold())
+        .title_alignment(Alignment::Center)
+        .borders(Borders::ALL)
+        .bg(Color::Blue)
+        .border_type(BorderType::Rounded);
+    let error_window = Paragraph::new(info_message)
+        .wrap(Wrap { trim: true })
+        .block(title)
+        .style(Style::default().fg(Color::White));
+    let ok_label = Paragraph::new("OK")
+        .style(Style::default().bold().fg(Color::LightBlue).bg(Color::White))
+        .alignment(Alignment::Center);
+
+    let width: u16 = (frame.size().width as f32 * 0.75f32) as u16;
+    let height: u16 = frame.size().height / 2;
+    let area = centered_rect(width, height, frame.size());
+    let ok_label_area = Rect {
+        x: area.x + 1,
+        y: area.y + area.height - 2,
+        width: area.width - 2,
+        height: 1,
+    };
+    let buffer = frame.buffer_mut();
+    Clear.render(area, buffer);
+    frame.render_widget(error_window, area);
+    frame.render_widget(ok_label, ok_label_area);
 }
 
 fn centered_rect(w: u16, h: u16, r: Rect) -> Rect {

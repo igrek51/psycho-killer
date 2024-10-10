@@ -1,7 +1,7 @@
+use std::time::{Duration, Instant};
 use std::{
-    sync::mpsc,
+    sync::{mpsc, Arc, Mutex},
     thread,
-    time::{Duration, Instant},
 };
 
 use anyhow::Result;
@@ -15,67 +15,96 @@ pub enum Event {
     /// Key press.
     Key(KeyEvent),
     /// Terminal resize.
-    Resize(u16, u16),
+    Resize,
 }
 
 /// Terminal event handler.
 #[derive(Debug)]
 pub struct EventHandler {
-    /// Event sender channel.
-    #[allow(dead_code)]
     sender: mpsc::Sender<Event>,
-    /// Event receiver channel.
     receiver: mpsc::Receiver<Event>,
-    /// Event handler thread.
-    #[allow(dead_code)]
-    handler: thread::JoinHandle<()>,
+    suspended_store: Arc<Mutex<bool>>,
+    tick_rate: Duration,
 }
 
 impl EventHandler {
-    /// Constructs a new instance of [`EventHandler`].
     pub fn new(tick_rate: u64) -> Self {
         let tick_rate = Duration::from_millis(tick_rate);
         let (sender, receiver) = mpsc::channel();
-        let handler = {
-            let sender = sender.clone();
-            thread::spawn(move || {
-                let mut last_tick = Instant::now();
-                loop {
-                    let timeout = tick_rate.checked_sub(last_tick.elapsed()).unwrap_or(tick_rate);
-
-                    if event::poll(timeout).expect("unable to poll for event") {
-                        match event::read().expect("unable to read event") {
-                            CrosstermEvent::Key(e) => {
-                                if e.kind == event::KeyEventKind::Press {
-                                    sender.send(Event::Key(e))
-                                } else {
-                                    Ok(()) // ignore KeyEventKind::Release on windows
-                                }
-                            }
-                            CrosstermEvent::Resize(w, h) => sender.send(Event::Resize(w, h)),
-                            _ => unimplemented!(),
-                        }
-                        .expect("failed to send terminal event")
-                    }
-
-                    if last_tick.elapsed() >= tick_rate {
-                        sender.send(Event::Tick).expect("failed to send tick event");
-                        last_tick = Instant::now();
-                    }
-                }
-            })
-        };
+        let suspended_store = Arc::new(Mutex::new(false));
         Self {
             sender,
             receiver,
-            handler,
+            suspended_store,
+            tick_rate,
         }
     }
 
-    /// Receive the next event from the handler thread.
-    /// This function will always block the current thread if
-    /// there is no data available and it's possible for more data to be sent.
+    pub fn listen(self) -> Self {
+        let sender = self.sender.clone();
+        let suspended_store: Arc<Mutex<bool>> = self.suspended_store.clone();
+        thread::spawn(move || {
+            let mut last_tick = Instant::now();
+            loop {
+                let timeout = self
+                    .tick_rate
+                    .checked_sub(last_tick.elapsed())
+                    .unwrap_or(self.tick_rate);
+
+                if Self::is_suspended(&suspended_store) {
+                    thread::sleep(Duration::from_millis(100));
+                    continue;
+                }
+
+                if event::poll(timeout).expect("unable to poll for event") {
+                    match event::read().expect("unable to read event") {
+                        CrosstermEvent::Key(e) => {
+                            if !Self::is_suspended(&suspended_store.clone()) {
+                                if e.kind == event::KeyEventKind::Press {
+                                    sender.send(Event::Key(e)).expect("failed to send key event");
+                                }
+                            }
+                        }
+                        CrosstermEvent::Resize(_, _) => {
+                            sender.send(Event::Resize).expect("failed to send resize event");
+                        }
+                        _ => {}
+                    }
+                }
+
+                if last_tick.elapsed() >= self.tick_rate {
+                    sender.send(Event::Tick).expect("failed to send tick event");
+                    last_tick = Instant::now();
+                }
+            }
+        });
+        self
+    }
+
     pub fn next(&self) -> Result<Event> {
         Ok(self.receiver.recv()?)
+    }
+
+    pub fn suspend(&self) {
+        *self.suspended_store.lock().unwrap() = true;
+    }
+
+    pub fn resume(&self) {
+        Self::clear_queued_events();
+        *self.suspended_store.lock().unwrap() = false;
+    }
+
+    pub fn clear_queued_events() {
+        while Self::is_event_available() {
+            event::read().unwrap();
+        }
+    }
+
+    pub fn is_event_available() -> bool {
+        event::poll(Duration::from_millis(100)).unwrap()
+    }
+
+    pub fn is_suspended(suspended_store: &Arc<Mutex<bool>>) -> bool {
+        *suspended_store.clone().lock().unwrap()
     }
 }

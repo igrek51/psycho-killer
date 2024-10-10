@@ -14,6 +14,7 @@ pub struct SystemProcStats {
     pub processes: Vec<ProcessStat>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Default, Clone)]
 pub struct ProcessStat {
     pub pid: String,
@@ -80,6 +81,7 @@ impl SystemStat {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Default, Clone)]
 pub struct MemoryStat {
     pub total: u64,
@@ -110,7 +112,6 @@ pub struct DiskStat {
 
 #[derive(Debug, Default, Clone)]
 pub struct PartitionUsage {
-    pub mount_point: String,
     pub used: u64,
     pub total: u64,
     pub usage: f64,
@@ -201,7 +202,6 @@ pub fn get_system_stats(sys: &mut System) -> SystemStat {
         if include_mount_point(mount_point) && disk.total_space() > 0 {
             let used = disk.total_space() - disk.available_space();
             let partition_usage = PartitionUsage {
-                mount_point: mount_point.to_string(),
                 total: disk.total_space(),
                 used,
                 usage: used as f64 / disk.total_space() as f64,
