@@ -5,9 +5,10 @@ use anyhow::{anyhow, Context, Result};
 use libc::{sysconf, _SC_CLK_TCK};
 use sysinfo::{ComponentExt, DiskExt, NetworkExt, ProcessExt, System, SystemExt, Uid};
 
+use crate::app::App;
 use crate::logs::log;
-use crate::numbers::ClampNumExt;
 use crate::numbers::PercentFormatterExt;
+use crate::numbers::{format_duration, ClampNumExt};
 
 #[derive(Debug, Default, Clone)]
 pub struct SystemProcStats {
@@ -51,6 +52,23 @@ impl ProcessStat {
             return "0%".to_string();
         }
         (delta_cpu_ms / delta_time_ms as f64).to_percent_len5()
+    }
+
+    pub fn details(&self, app: &App) -> String {
+        let uptime = format_duration(self.run_time);
+        let mem_usage = self.memory_usage.to_percent1();
+        let cpu_usage = self.format_cpu_usage(&app.previous_proc_stats.processes);
+        let user_id_str = self.user_id.map(|uid| uid.to_string()).unwrap_or("unknown".to_string());
+        format!(
+            "Process ID: {}
+            Command: {}
+            Uptime: {}
+            Memory usage: {}
+            CPU usage: {}
+            User ID: {}
+            ",
+            self.pid, self.cmd, uptime, mem_usage, cpu_usage, user_id_str,
+        )
     }
 }
 

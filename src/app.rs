@@ -5,8 +5,8 @@ use std::sync::mpsc;
 use std::thread;
 use sysinfo::{System, SystemExt};
 
+use crate::action_menu::{generate_known_menu_actions, MenuAction};
 use crate::appdata::{Ordering, WindowFocus};
-use crate::kill::{generate_knwon_signals, KillSignal};
 use crate::logs::print_logs;
 use crate::sysinfo::{ProcessStat, SystemProcStats, SystemStat};
 use crate::tui::Tui;
@@ -23,8 +23,8 @@ pub struct App {
     pub init_stat: SystemStat,
     pub filter_text: String,
     pub filtered_processes: Vec<ProcessStat>,
-    pub signal_cursor: usize,
-    pub known_signals: Vec<KillSignal>,
+    pub menu_action_cursor: usize,
+    pub known_menu_actions: Vec<MenuAction>,
     pub proc_list_table_state: TableState,
     pub horizontal_scroll: i32,
     pub sysinfo_scroll: i32,
@@ -37,7 +37,7 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         Self {
-            known_signals: generate_knwon_signals(),
+            known_menu_actions: generate_known_menu_actions(),
             sysinfo_sys: System::new_all(),
             ..Self::default()
         }

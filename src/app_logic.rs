@@ -1,9 +1,9 @@
 use ratatui::text::Line;
 use std::cmp::Ordering::Equal;
 
+use crate::action_menu::{kill_pid, MenuAction, Operation};
 use crate::app::App;
 use crate::appdata::{Ordering, WindowFocus};
-use crate::kill::{kill_pid, KillSignal};
 use crate::numbers::ClampNumExt;
 use crate::strings::contains_all_words;
 use crate::sysinfo::{get_proc_stats, get_system_stats, ProcessStat};
@@ -11,10 +11,14 @@ use crate::sysinfo::{get_proc_stats, get_system_stats, ProcessStat};
 const HELP_INFO: &str = "Keyboard controls:
 `?` to show help.
 `Ctrl+F` to filter processes.
+Arrows `↑` and `↓` to navigate list.
 `F5` or `R` to refresh list.
 `S` to sort.
-`Enter` to confirm.
-`Tab` to switch focus.
+`M` to order by memory usage.
+`C` to order by CPU usage.
+`U` to order by uptime.
+`Enter` to execute.
+`Tab` to switch tab.
 `Esc` to cancel.";
 
 impl App {
@@ -37,8 +41,8 @@ impl App {
                 self.proc_list_table_state.select(Some(self.process_cursor));
             }
             WindowFocus::SignalPick => {
-                self.signal_cursor = (self.signal_cursor as i32 + delta)
-                    .clamp_max(self.known_signals.len() as i32 - 1)
+                self.menu_action_cursor = (self.menu_action_cursor as i32 + delta)
+                    .clamp_max(self.known_menu_actions.len() as i32 - 1)
                     .clamp_min(0) as usize;
             }
             WindowFocus::SystemStats => {
@@ -59,6 +63,11 @@ impl App {
             Ordering::ByMemory => Ordering::ByCpu,
             Ordering::ByCpu => Ordering::ByUptime,
         };
+        self.filter_processes();
+    }
+
+    pub fn set_process_ordering(&mut self, ordering: Ordering) {
+        self.ordering = ordering;
         self.filter_processes();
     }
 
@@ -112,16 +121,27 @@ impl App {
             return;
         }
         self.window_focus = WindowFocus::SignalPick;
-        self.signal_cursor = 0;
+        self.menu_action_cursor = 0;
     }
 
     pub fn confirm_signal(&mut self) {
         let process: &ProcessStat = &self.filtered_processes[self.process_cursor];
-        let signal: &KillSignal = &self.known_signals[self.signal_cursor];
-        kill_pid(&process.pid, signal);
+        let action: &MenuAction = &self.known_menu_actions[self.menu_action_cursor];
+
+        match action.operation {
+            Operation::KillSignal { template } => {
+                let res = kill_pid(&process.pid, template);
+                if res.is_err() {
+                    self.error_message = Some(res.err().unwrap().to_string());
+                }
+                self.refresh_processes();
+            }
+            Operation::ShowDetails => {
+                self.info_message = Some(process.details(self));
+            }
+        }
 
         self.window_focus = WindowFocus::ProcessFilter;
-        self.refresh_processes();
     }
 
     pub fn format_sys_stats(&self) -> Vec<Line> {
@@ -140,6 +160,11 @@ impl App {
 
     pub fn filter_backspace(&mut self) {
         self.filter_text.pop();
+        self.filter_processes();
+    }
+
+    pub fn filter_append(&mut self, c: char) {
+        self.filter_text.push(c);
         self.filter_processes();
     }
 

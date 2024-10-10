@@ -5,9 +5,9 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Paragraph},
 };
 
+use crate::action_menu::MenuAction;
 use crate::app::App;
 use crate::appdata::WindowFocus;
-use crate::kill::KillSignal;
 use crate::numbers::{format_duration, ClampNumExt, PercentFormatterExt};
 use crate::strings::apply_scroll;
 use crate::sysinfo::ProcessStat;
@@ -47,17 +47,16 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(vec![Constraint::Max(3), Constraint::Max(3), Constraint::Min(5)])
+        .constraints(vec![Constraint::Max(3), Constraint::Min(5), Constraint::Max(3)])
         .split(area);
 
     render_info_panel(app, frame, layout[0]);
-    render_filter_panel(app, frame, layout[1]);
-    render_proc_list(app, frame, layout[2]);
+    render_proc_list(app, frame, layout[1]);
+    render_filter_panel(app, frame, layout[2]);
 }
 
 fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
-    let p_text =
-        "`Ctrl+F` to filter processes. `R` to refresh list. `S` to sort. `Enter` to confirm. `?` for more controls.";
+    let p_text = "`Ctrl+F` to filter. `R` to refresh. `S` to sort. `Enter` to execute. `?` for more controls.";
     let widget = Paragraph::new(p_text)
         .wrap(Wrap { trim: true })
         .block(
@@ -82,7 +81,7 @@ fn render_filter_panel(app: &mut App, frame: &mut Frame, area: Rect) {
         WindowFocus::ProcessFilter => Color::LightYellow,
         _ => Color::White,
     };
-    let mut title = Block::default().title("Filter (`Ctrl+F`)");
+    let mut title = Block::default().title("Filter (Ctrl+F)");
     if app.window_focus == WindowFocus::ProcessFilter {
         title = title.title_style(Style::new().bold());
     }
@@ -188,11 +187,11 @@ fn render_right(app: &mut App, frame: &mut Frame, area: Rect) {
 
 fn render_signal_panel(app: &mut App, frame: &mut Frame) {
     let list_items: Vec<ListItem> = app
-        .known_signals
+        .known_menu_actions
         .iter()
-        .map(|it: &KillSignal| ListItem::new(it.name))
+        .map(|it: &MenuAction| ListItem::new(it.name))
         .collect();
-    let mut list_state = ListState::default().with_selected(Some(app.signal_cursor));
+    let mut list_state = ListState::default().with_selected(Some(app.menu_action_cursor));
     let widget = List::new(list_items)
         .block(
             Block::default()
@@ -204,11 +203,11 @@ fn render_signal_panel(app: &mut App, frame: &mut Frame) {
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">> ");
 
-    let height = app.known_signals.len() as u16 + 2;
+    let height = app.known_menu_actions.len() as u16 + 2;
     let width: u16 = app
-        .known_signals
+        .known_menu_actions
         .iter()
-        .map(|it: &KillSignal| it.name.len() as u16)
+        .map(|it: &MenuAction| it.name.len() as u16)
         .max()
         .unwrap_or(0)
         + 8;

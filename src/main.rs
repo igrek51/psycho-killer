@@ -1,8 +1,8 @@
+mod action_menu;
 mod app;
 mod app_logic;
 mod appdata;
 mod event;
-mod kill;
 mod logs;
 mod numbers;
 mod strings;
