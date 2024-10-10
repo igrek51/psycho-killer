@@ -140,7 +140,11 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
         WindowFocus::Browse => Color::LightYellow,
         _ => Color::White,
     };
-    let mut title = Block::default().title("Running Processes");
+    let title = match app.group_by_exe {
+        false => "Running Processes",
+        true => "Running Processes (grouped by executable)",
+    };
+    let mut title = Block::default().title(title);
     if app.window_focus == WindowFocus::Browse {
         title = title.title_style(Style::new().bold());
     }

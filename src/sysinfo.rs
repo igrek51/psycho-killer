@@ -3,7 +3,7 @@ use std::{collections::HashMap, ops::Deref};
 
 use anyhow::{anyhow, Context, Result};
 use libc::{sysconf, _SC_CLK_TCK};
-use sysinfo::{ComponentExt, DiskExt, NetworkExt, ProcessExt, System, SystemExt, Uid};
+use sysinfo::{ComponentExt, DiskExt, NetworkExt, Process, ProcessExt, System, SystemExt, Uid};
 
 use crate::app::App;
 use crate::logs::log;
@@ -26,13 +26,14 @@ pub struct ProcessStat {
     pub cmd: String,
     // Full executable path: /opt/google/chrome/chrome
     pub exe: String,
-    pub cpu_usage: f64,    // fraction of 1 core, 0-CORES
+    pub cwd: String,
+    pub cpu_usage: f64,    // fraction of 1 core, [0-CORES]
     pub memory_usage: f64, // fraction of total memory
     pub disk_usage: f64,
     pub user_id: Option<u32>,
     pub display_name: String,
-    pub run_time: u64, // in seconds
-    pub time_ms: u64,
+    pub run_time: u64, // uptime in seconds
+    pub time_ms: u64,  // timestamp of reading statistics
     pub cpu_time: f64, // in seconds
 }
 
@@ -59,15 +60,21 @@ impl ProcessStat {
         let mem_usage = self.memory_usage.to_percent1();
         let cpu_usage = self.format_cpu_usage(&app.previous_proc_stats.processes);
         let user_id_str = self.user_id.map(|uid| uid.to_string()).unwrap_or("unknown".to_string());
+        let full_command: String = match self.cmd.is_empty() {
+            false => self.cmd.clone(),
+            _ => self.name.clone(),
+        };
         format!(
             "Process ID: {}
-            Command: {}
+            Full command (or process name): {}
+            Executable path: {}
+            Working directory: {}
             Uptime: {}
             Memory usage: {}
             CPU usage: {}
             User ID: {}
             ",
-            self.pid, self.cmd, uptime, mem_usage, cpu_usage, user_id_str,
+            self.pid, full_command, self.exe, self.cwd, uptime, mem_usage, cpu_usage, user_id_str,
         )
     }
 }
@@ -154,7 +161,12 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
 
     let clk_tck: i64 = get_clock_ticks();
     let mut processes = Vec::new();
-    for (pid, process) in sys.processes() {
+    let process_map = sys.processes();
+    let timestamp_ms = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    for (pid, process) in process_map {
         let user_id: Option<u32> = process.user_id().map(|uid: &Uid| *uid.deref());
         let cmd = process.cmd().join(" ");
         let proc_name = process.name().to_string();
@@ -162,6 +174,8 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
             false => cmd.clone(),
             _ => proc_name.clone(),
         };
+        let exe_path: String = extract_exe_path(process);
+        let cwd: String = process.cwd().to_string_lossy().to_string();
         let mem_usage_fraction: f64 = process.memory() as f64 / 1024f64 / memstat.total as f64;
         let disk_usage = process.disk_usage().total_written_bytes as f64 + process.disk_usage().total_read_bytes as f64;
         let cpu_time = read_cpu_time(pid.to_string()).unwrap_or(0) as f64 / clk_tck as f64;
@@ -172,17 +186,15 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
             pid_num: pid.to_string().parse().unwrap_or(0),
             name: proc_name,
             cmd,
-            exe: process.exe().to_string_lossy().to_string(),
+            exe: exe_path,
+            cwd,
             cpu_usage,
             memory_usage: mem_usage_fraction,
             disk_usage,
             user_id,
             display_name,
             run_time: process.run_time(),
-            time_ms: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as u64,
+            time_ms: timestamp_ms,
             cpu_time,
         };
         processes.push(process_stat);
@@ -444,4 +456,55 @@ fn get_clock_ticks() -> i64 {
         return 100;
     }
     clk_tck
+}
+
+pub fn group_by_exe_path(processes: &Vec<ProcessStat>) -> Vec<ProcessStat> {
+    let mut process_groups: HashMap<String, Vec<ProcessStat>> = HashMap::new();
+    for process_stat in processes {
+        process_groups
+            .entry(process_stat.exe.clone())
+            .or_insert(Vec::new())
+            .push(process_stat.clone());
+    }
+    process_groups
+        .into_iter()
+        .map(|(_, processes)| merge_processes_group(processes))
+        .collect()
+}
+
+pub fn merge_processes_group(processes: Vec<ProcessStat>) -> ProcessStat {
+    let first = processes.get(0).unwrap();
+    let cpu_usage: f64 = processes.iter().map(|p| p.cpu_usage).sum();
+    let memory_usage: f64 = processes.iter().map(|p| p.memory_usage).sum();
+    let disk_usage: f64 = processes.iter().map(|p| p.disk_usage).sum();
+    let cpu_time: f64 = processes.iter().map(|p| p.cpu_time).sum();
+    let run_time: u64 = processes.iter().map(|p| p.run_time).max().unwrap_or(0);
+    ProcessStat {
+        pid: first.pid.clone(),
+        pid_num: first.pid_num,
+        name: first.name.clone(),
+        cmd: first.cmd.clone(),
+        exe: first.exe.clone(),
+        cwd: first.cwd.clone(),
+        user_id: first.user_id,
+        display_name: first.exe.clone(),
+        time_ms: first.time_ms,
+        cpu_usage,
+        memory_usage,
+        disk_usage,
+        run_time,
+        cpu_time,
+    }
+}
+
+pub fn extract_exe_path(process: &Process) -> String {
+    let first_part: &str = process.cmd().get(0).map(|s| &**s).unwrap_or("");
+    let mut exe = process.exe().to_string_lossy().to_string();
+    if exe.ends_with(" (deleted)") {
+        exe = exe.trim_end_matches(" (deleted)").to_string();
+    }
+    match exe.is_empty() {
+        false => exe,
+        _ => first_part.to_string(),
+    }
 }

@@ -21,6 +21,6 @@ pub enum Ordering {
 
 impl Default for Ordering {
     fn default() -> Self {
-        Ordering::ByUptime
+        Ordering::ByMemory
     }
 }

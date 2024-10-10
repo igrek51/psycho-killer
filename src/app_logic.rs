@@ -6,7 +6,7 @@ use crate::app::App;
 use crate::appdata::{Ordering, WindowFocus};
 use crate::numbers::ClampNumExt;
 use crate::strings::contains_all_words;
-use crate::sysinfo::{get_proc_stats, get_system_stats, ProcessStat};
+use crate::sysinfo::{get_proc_stats, get_system_stats, group_by_exe_path, ProcessStat};
 
 const HELP_INFO: &str = "Keyboard controls:
 `?` to show help.
@@ -17,6 +17,7 @@ Arrows `↑` and `↓` to navigate list.
 `M` to order by memory usage.
 `C` to order by CPU usage.
 `U` to order by uptime.
+`G` group processes by executable path.
 `Enter` to execute.
 `Tab` to switch tab.
 `Esc` to cancel.";
@@ -84,6 +85,11 @@ impl App {
             .filter(|it: &&ProcessStat| contains_all_words(it.search_name().as_str(), &filter_words))
             .cloned()
             .collect();
+
+        if self.group_by_exe {
+            self.filtered_processes = group_by_exe_path(&self.filtered_processes);
+        }
+
         let sort_fn = self.get_sort_fn();
         self.filtered_processes.sort_unstable_by(sort_fn);
 
@@ -186,5 +192,10 @@ impl App {
 
     pub fn show_help(&mut self) {
         self.info_message = Some(HELP_INFO.to_string());
+    }
+
+    pub fn toggle_group_by_exe(&mut self) {
+        self.group_by_exe = !self.group_by_exe;
+        self.filter_processes();
     }
 }

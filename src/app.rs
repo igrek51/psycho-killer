@@ -32,6 +32,7 @@ pub struct App {
     pub ordering: Ordering,
     pub error_message: Option<String>,
     pub info_message: Option<String>,
+    pub group_by_exe: bool,
 }
 
 impl App {

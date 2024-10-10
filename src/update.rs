@@ -65,10 +65,11 @@ pub fn on_key_browse(app: &mut App, key_event: KeyEvent) {
         KeyCode::F(5) => app.refresh_processes(),
         KeyCode::Char('r') => app.refresh_processes(),
         KeyCode::F(6) => app.switch_ordering(),
-        KeyCode::Char('s') => app.switch_ordering(),
+        KeyCode::Char('s') | KeyCode::Char('o') => app.switch_ordering(),
         KeyCode::Char('m') => app.set_process_ordering(Ordering::ByMemory),
         KeyCode::Char('c') => app.set_process_ordering(Ordering::ByCpu),
         KeyCode::Char('u') => app.set_process_ordering(Ordering::ByUptime),
+        KeyCode::Char('g') => app.toggle_group_by_exe(),
         KeyCode::Enter => app.confirm_process(),
         _ => log(format!("Unknown key event: {:?}", key_event).as_str()),
     };
