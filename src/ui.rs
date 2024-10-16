@@ -8,7 +8,7 @@ use ratatui::{
 use crate::action_menu::MenuAction;
 use crate::app::App;
 use crate::appdata::WindowFocus;
-use crate::numbers::{format_duration, ClampNumExt, PercentFormatterExt};
+use crate::numbers::{format_duration, MyIntExt, MyNumExt, PercentFormatterExt};
 use crate::strings::apply_scroll;
 use crate::sysinfo::ProcessStat;
 
@@ -278,8 +278,8 @@ fn render_info_popup(app: &mut App, frame: &mut Frame) {
         .style(Style::default().bold().fg(Color::LightBlue).bg(Color::White))
         .alignment(Alignment::Center);
 
-    let width: u16 = (frame.size().width as f32 * 0.75f32) as u16;
-    let height: u16 = frame.size().height / 2;
+    let width: u16 = frame.size().width.fraction(0.75);
+    let height: u16 = frame.size().height.fraction(0.75);
     let area = centered_rect(width, height, frame.size());
     let ok_label_area = Rect {
         x: area.x + 1,

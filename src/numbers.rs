@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 pub trait Numeric: Into<u64> + Display + Copy {}
+impl Numeric for u16 {}
 impl Numeric for u32 {}
 impl Numeric for u64 {}
 
@@ -106,12 +107,12 @@ impl MyNum for i64 {}
 impl MyNum for f32 {}
 impl MyNum for f64 {}
 
-pub trait ClampNumExt<T> {
+pub trait MyNumExt<T> {
     fn clamp_min(&self, min: T) -> T;
     fn clamp_max(&self, max: T) -> T;
 }
 
-impl<T: MyNum> ClampNumExt<T> for T {
+impl<T: MyNum> MyNumExt<T> for T {
     fn clamp_min(&self, min: T) -> T {
         if *self < min {
             min
@@ -126,5 +127,16 @@ impl<T: MyNum> ClampNumExt<T> for T {
         } else {
             *self
         }
+    }
+}
+
+pub trait MyIntExt<T> {
+    fn fraction(&self, multiplier: f64) -> T;
+}
+
+impl MyIntExt<u16> for u16 {
+    fn fraction(&self, multiplier: f64) -> u16 {
+        let multiplied = (*self as f64) * multiplier;
+        multiplied as u16
     }
 }

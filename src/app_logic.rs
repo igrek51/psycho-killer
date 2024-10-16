@@ -4,7 +4,7 @@ use std::cmp::Ordering::Equal;
 use crate::action_menu::{kill_pid, MenuAction, Operation};
 use crate::app::App;
 use crate::appdata::{Ordering, WindowFocus};
-use crate::numbers::ClampNumExt;
+use crate::numbers::MyNumExt;
 use crate::strings::contains_all_words;
 use crate::sysinfo::{get_proc_stats, get_system_stats, group_by_exe_path, ProcessStat};
 
@@ -144,7 +144,7 @@ impl App {
                 self.refresh_processes();
             }
             Operation::ShowDetails => {
-                self.info_message = Some(process.details());
+                self.info_message = Some(process.details(&self.sys_stat));
             }
         }
 

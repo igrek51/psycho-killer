@@ -56,20 +56,20 @@ impl SystemStat {
                 0 => 0f64,
                 _ => busy_delta as f64 / total_delta as f64,
             };
-            self.add_body_line(&mut lines, format!("Usage: {}", usage.to_percent2()));
+            self.add_body_line(&mut lines, format!("Usage: {} / 100%", usage.to_percent2()));
             // 0-100%
         }
         self.add_body_line(
             &mut lines,
-            format!("1m Load average: {}", self.cpu.load_avg.load_1m.to_percent2()),
+            format!("1m Load average: {} / 100%", self.cpu.load_avg.load_1m.to_percent2()),
         );
         self.add_body_line(
             &mut lines,
-            format!("5m Load average: {}", self.cpu.load_avg.load_5m.to_percent2()),
+            format!("5m Load average: {} / 100%", self.cpu.load_avg.load_5m.to_percent2()),
         );
         self.add_body_line(
             &mut lines,
-            format!("15m Load average: {}", self.cpu.load_avg.load_15m.to_percent2()),
+            format!("15m Load average: {} / 100%", self.cpu.load_avg.load_15m.to_percent2()),
         );
 
         if self.disk_space_usages.len() > 0 {

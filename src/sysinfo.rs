@@ -7,7 +7,7 @@ use sysinfo::{ComponentExt, DiskExt, NetworkExt, Process, ProcessExt, System, Sy
 
 use crate::logs::log;
 use crate::numbers::PercentFormatterExt;
-use crate::numbers::{format_duration, ClampNumExt};
+use crate::numbers::{format_duration, MyNumExt};
 
 #[derive(Debug, Default, Clone)]
 pub struct SystemProcStats {
@@ -61,7 +61,7 @@ impl ProcessStat {
         self.cpu_usage.to_percent_len5()
     }
 
-    pub fn details(&self) -> String {
+    pub fn details(&self, sys_stat: &SystemStat) -> String {
         let uptime = format_duration(self.run_time);
         let mem_usage = self.memory_usage.to_percent1();
         let cpu_usage = self.format_cpu_usage();
@@ -70,6 +70,8 @@ impl ProcessStat {
             false => self.cmd.clone(),
             _ => self.name.clone(),
         };
+        let cores_num = sys_stat.cpu_num;
+        let max_cpu_usage = format!("{}%", cores_num * 100);
         format!(
             "Process ID: {}
             Full command (or process name): {}
@@ -77,10 +79,10 @@ impl ProcessStat {
             Working directory: {}
             Uptime: {}
             Memory usage: {}
-            CPU usage: {}
+            CPU usage: {} / {}
             User ID: {}
             ",
-            self.pid, full_command, self.exe, self.cwd, uptime, mem_usage, cpu_usage, user_id_str,
+            self.pid, full_command, self.exe, self.cwd, uptime, mem_usage, cpu_usage, max_cpu_usage, user_id_str,
         )
     }
 }
