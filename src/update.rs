@@ -50,8 +50,8 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
 pub fn on_key_browse(app: &mut App, key_event: KeyEvent) {
     match key_event.code {
         KeyCode::Esc | KeyCode::Char('q') => app.quit(),
-        KeyCode::Down => app.move_cursor(1),
-        KeyCode::Up => app.move_cursor(-1),
+        KeyCode::Down | KeyCode::Char('j') => app.move_cursor(1),
+        KeyCode::Up | KeyCode::Char('k') => app.move_cursor(-1),
         KeyCode::Left => app.move_horizontal_scroll(-10),
         KeyCode::Right => app.move_horizontal_scroll(10),
         KeyCode::PageDown => app.move_cursor(10),
