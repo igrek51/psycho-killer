@@ -19,11 +19,11 @@ pub struct SystemProcStats {
 pub struct ProcessStat {
     pub pid: String,
     pub pid_num: u32,
-    // Short: chrome
+    // Short name, e.g. chrome
     pub name: String,
-    // Full command: /opt/google/chrome/chrome --type=renderer ...
+    // Full command, e.g. /opt/google/chrome/chrome --type=renderer ...
     pub cmd: String,
-    // Full executable path: /opt/google/chrome/chrome
+    // Full executable path, e.g. /opt/google/chrome/chrome
     pub exe: String,
     pub cwd: String,
     pub cpu_usage: f64,    // fraction of 1 core, [0-CORES]
@@ -34,6 +34,7 @@ pub struct ProcessStat {
     pub run_time: u64, // uptime in seconds
     pub time_ms: u64,  // timestamp of reading statistics
     pub cpu_time: f64, // in seconds
+    pub parent_pid: Option<String>,
 }
 
 impl ProcessStat {
@@ -72,8 +73,11 @@ impl ProcessStat {
         };
         let cores_num = sys_stat.cpu_num;
         let max_cpu_usage = format!("{}%", cores_num * 100);
+        let parent_pid_str = self.parent_pid.clone().unwrap_or("-".to_string());
+
         format!(
             "Process ID: {}
+            Parent Process ID: {}
             Full command (or process name): {}
             Executable path: {}
             Working directory: {}
@@ -82,7 +86,16 @@ impl ProcessStat {
             CPU usage: {} / {}
             User ID: {}
             ",
-            self.pid, full_command, self.exe, self.cwd, uptime, mem_usage, cpu_usage, max_cpu_usage, user_id_str,
+            self.pid,
+            parent_pid_str,
+            full_command,
+            self.exe,
+            self.cwd,
+            uptime,
+            mem_usage,
+            cpu_usage,
+            max_cpu_usage,
+            user_id_str,
         )
     }
 }
@@ -188,6 +201,7 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
         let disk_usage = process.disk_usage().total_written_bytes as f64 + process.disk_usage().total_read_bytes as f64;
         let cpu_time = read_cpu_time(pid.to_string()).unwrap_or(0) as f64 / clk_tck as f64;
         let cpu_usage = process.cpu_usage() as f64 / 100f64;
+        let parent_pid = process.parent().map(|p| p.to_string());
 
         let process_stat = ProcessStat {
             pid: pid.to_string(),
@@ -204,6 +218,7 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
             run_time: process.run_time(),
             time_ms: timestamp_ms,
             cpu_time,
+            parent_pid,
         };
         processes.push(process_stat);
     }
@@ -502,6 +517,7 @@ pub fn merge_processes_group(processes: Vec<ProcessStat>) -> ProcessStat {
         disk_usage,
         run_time,
         cpu_time,
+        parent_pid: None,
     }
 }
 
