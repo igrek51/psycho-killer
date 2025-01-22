@@ -32,6 +32,7 @@ pub struct App {
     pub ordering: Ordering,
     pub error_message: Option<String>,
     pub info_message: Option<String>,
+    pub info_message_scroll: usize,
     pub group_by_exe: bool,
 }
 
@@ -40,7 +41,7 @@ impl App {
         Self {
             known_menu_actions: generate_known_menu_actions(),
             sysinfo_sys: System::new_all(),
-            ..Self::default()
+            ..Default::default()
         }
     }
 

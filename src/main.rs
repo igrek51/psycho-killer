@@ -3,6 +3,7 @@ mod app;
 mod app_logic;
 mod appdata;
 mod event;
+mod keyboard;
 mod logs;
 mod numbers;
 mod strings;
@@ -10,7 +11,6 @@ mod sysinfo;
 mod sysinfo_render;
 mod tui;
 mod ui;
-mod update;
 
 use anyhow::{Context, Result};
 

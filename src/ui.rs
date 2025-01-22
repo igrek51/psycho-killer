@@ -8,14 +8,14 @@ use ratatui::{
 use crate::action_menu::MenuAction;
 use crate::app::App;
 use crate::appdata::WindowFocus;
-use crate::numbers::{format_duration, MyIntExt, MyNumExt, PercentFormatterExt};
+use crate::numbers::{format_duration, ClampNumExt, MyIntExt, PercentFormatterExt};
 use crate::strings::apply_scroll;
 use crate::sysinfo::ProcessStat;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn render(app: &mut App, frame: &mut Frame) {
-    let area = frame.size();
+    let area = frame.area();
     let w = area.width as f32;
     let r_width = 44.;
     let mut l_width = (w - r_width).clamp_min(w * 0.4);
@@ -160,7 +160,7 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
                 .border_style(Style::default().fg(panel_color)),
         )
         .style(Style::default().fg(Color::White))
-        .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+        .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">>");
 
     frame.render_stateful_widget(table, area, &mut app.proc_list_table_state);
@@ -215,7 +215,7 @@ fn render_signal_panel(app: &mut App, frame: &mut Frame) {
         .max()
         .unwrap_or(0)
         + 8;
-    let area = centered_rect(width, height, frame.size());
+    let area = centered_rect(width, height, frame.area());
     let buffer = frame.buffer_mut();
     Clear.render(area, buffer);
     frame.render_stateful_widget(widget, area, &mut list_state);
@@ -242,9 +242,9 @@ fn render_error_popup(app: &mut App, frame: &mut Frame) {
         .style(Style::default().bold().fg(Color::LightRed).bg(Color::White))
         .alignment(Alignment::Center);
 
-    let width: u16 = (frame.size().width as f32 * 0.75f32) as u16;
-    let height: u16 = frame.size().height / 2;
-    let area = centered_rect(width, height, frame.size());
+    let width: u16 = (frame.area().width as f32 * 0.75f32) as u16;
+    let height: u16 = frame.area().height / 2;
+    let area = centered_rect(width, height, frame.area());
     let ok_label_area = Rect {
         x: area.x + 1,
         y: area.y + area.height - 2,
@@ -278,9 +278,9 @@ fn render_info_popup(app: &mut App, frame: &mut Frame) {
         .style(Style::default().bold().fg(Color::LightBlue).bg(Color::White))
         .alignment(Alignment::Center);
 
-    let width: u16 = frame.size().width.fraction(0.75);
-    let height: u16 = frame.size().height.fraction(0.75);
-    let area = centered_rect(width, height, frame.size());
+    let width: u16 = frame.area().width.fraction(0.75);
+    let height: u16 = frame.area().height.fraction(0.75);
+    let area = centered_rect(width, height, frame.area());
     let ok_label_area = Rect {
         x: area.x + 1,
         y: area.y + area.height - 2,

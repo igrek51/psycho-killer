@@ -4,7 +4,7 @@ use std::cmp::Ordering::Equal;
 use crate::action_menu::{kill_pid, MenuAction, Operation};
 use crate::app::App;
 use crate::appdata::{Ordering, WindowFocus};
-use crate::numbers::MyNumExt;
+use crate::numbers::{ClampNumExt, MyIntExt};
 use crate::strings::contains_all_words;
 use crate::sysinfo::{get_proc_stats, get_system_stats, group_by_exe_path, ProcessStat};
 
@@ -35,17 +35,21 @@ impl App {
     }
 
     pub fn move_cursor(&mut self, delta: i32) {
+        if self.has_info() {
+            self.info_message_scroll = self.info_message_scroll.add_casting(delta).clamp_usize();
+            return;
+        }
         match self.window_focus {
             WindowFocus::Browse | WindowFocus::ProcessFilter => {
                 self.process_cursor = (self.process_cursor as i32 + delta)
                     .clamp_max(self.filtered_processes.len() as i32 - 1)
-                    .clamp_min(0) as usize;
+                    .clamp_usize();
                 self.proc_list_table_state.select(Some(self.process_cursor));
             }
             WindowFocus::SignalPick => {
                 self.menu_action_cursor = (self.menu_action_cursor as i32 + delta)
                     .clamp_max(self.known_menu_actions.len() as i32 - 1)
-                    .clamp_min(0) as usize;
+                    .clamp_usize();
             }
             WindowFocus::SystemStats => {
                 self.sysinfo_scroll = (self.sysinfo_scroll + delta).clamp_min(0);
@@ -134,7 +138,6 @@ impl App {
     pub fn confirm_signal(&mut self) {
         let process: &ProcessStat = &self.filtered_processes[self.process_cursor];
         let action: &MenuAction = &self.known_menu_actions[self.menu_action_cursor];
-
         match action.operation {
             Operation::KillSignal { template } => {
                 let res = kill_pid(&process.pid, template);
@@ -144,11 +147,10 @@ impl App {
                 self.refresh_processes();
             }
             Operation::ShowDetails => {
-                self.info_message = Some(process.details(&self.sys_stat));
+                self.show_info(process.details(&self.sys_stat));
             }
         }
-
-        self.window_focus = WindowFocus::ProcessFilter;
+        self.window_focus = WindowFocus::Browse;
     }
 
     pub fn format_sys_stats(&self) -> Vec<Line> {
@@ -187,12 +189,17 @@ impl App {
         self.info_message.is_some()
     }
 
+    pub fn show_info(&mut self, message: String) {
+        self.info_message = Some(message);
+        self.info_message_scroll = 0;
+    }
+
     pub fn clear_info(&mut self) {
         self.info_message = None;
     }
 
     pub fn show_help(&mut self) {
-        self.info_message = Some(HELP_INFO.to_string());
+        self.show_info(HELP_INFO.to_string());
     }
 
     pub fn toggle_group_by_exe(&mut self) {

@@ -6,19 +6,25 @@ use crate::{
     logs::log,
 };
 
-pub fn update(app: &mut App, key_event: KeyEvent) {
-    let mut consumed = true;
+pub fn update_on_key(app: &mut App, key_event: KeyEvent) {
+    if handle_master_key(app, key_event) {
+        return;
+    }
+    match app.window_focus {
+        Browse => on_key_browse(app, key_event),
+        ProcessFilter => on_key_process_filter(app, key_event),
+        SignalPick => on_key_signal_pick(app, key_event),
+        SystemStats => on_key_system_stats(app, key_event),
+    }
+}
+
+pub fn handle_master_key(app: &mut App, key_event: KeyEvent) -> bool {
     match key_event.code {
-        KeyCode::Enter | KeyCode::Esc => {
-            if app.has_error() {
-                app.clear_error();
-            } else if app.has_info() {
-                app.clear_info();
-            } else {
-                consumed = false;
-            }
-        }
+        KeyCode::Enter | KeyCode::Esc if app.has_error() => app.clear_error(),
+        KeyCode::Enter | KeyCode::Esc if app.has_info() => app.clear_info(),
         KeyCode::Char('c') | KeyCode::Char('C') if is_ctrl(key_event) => app.quit(),
+        KeyCode::Down if app.has_info() => app.move_cursor(1),
+        KeyCode::Up if app.has_info() => app.move_cursor(-1),
         KeyCode::Tab => {
             app.window_focus = match app.window_focus {
                 Browse => SystemStats,
@@ -35,16 +41,9 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
                 _ => app.window_focus,
             }
         }
-        _ => consumed = false,
+        _ => return false,
     };
-    if !consumed {
-        match app.window_focus {
-            Browse => on_key_browse(app, key_event),
-            ProcessFilter => on_key_process_filter(app, key_event),
-            SignalPick => on_key_signal_pick(app, key_event),
-            SystemStats => on_key_system_stats(app, key_event),
-        };
-    }
+    true
 }
 
 pub fn on_key_browse(app: &mut App, key_event: KeyEvent) {

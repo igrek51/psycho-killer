@@ -7,7 +7,7 @@ use sysinfo::{ComponentExt, DiskExt, NetworkExt, Process, ProcessExt, System, Sy
 
 use crate::logs::log;
 use crate::numbers::PercentFormatterExt;
-use crate::numbers::{format_duration, MyNumExt};
+use crate::numbers::{format_duration, ClampNumExt};
 
 #[derive(Debug, Default, Clone)]
 pub struct SystemProcStats {
