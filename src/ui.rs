@@ -261,35 +261,49 @@ fn render_info_popup(app: &mut App, frame: &mut Frame) {
     if app.info_message.is_none() {
         return;
     }
+    let width: u16 = frame.area().width.fraction(0.75);
     let info_message: String = app.info_message.clone().unwrap();
+    let wrapped_lines = textwrap::wrap(info_message.as_str(), (width - 3) as usize);
+    let wrapped_message = wrapped_lines.join("\n");
+    let skipped_lines = wrapped_message
+        .lines()
+        .into_iter()
+        .map(|s| s.to_string())
+        .skip(app.info_message_scroll)
+        .collect::<Vec<String>>();
+    let display_message: String = skipped_lines.join("\n");
+    let max_height: u16 = frame.area().height.fraction(0.75);
+    let text_height: u16 = wrapped_message
+        .lines()
+        .count()
+        .clamp_min(5)
+        .clamp_max(max_height.into()) as u16;
 
-    let title = Block::default()
+    let title_block = Block::default()
         .title("Info")
         .title_style(Style::new().bold())
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .bg(Color::Blue)
+        .padding(Padding::bottom(1))
         .border_type(BorderType::Rounded);
-    let error_window = Paragraph::new(info_message)
-        .wrap(Wrap { trim: true })
-        .block(title)
+    let popup_window = Paragraph::new(Text::raw(display_message))
+        .wrap(Wrap { trim: false })
+        .block(title_block)
         .style(Style::default().fg(Color::White));
     let ok_label = Paragraph::new("OK")
         .style(Style::default().bold().fg(Color::LightBlue).bg(Color::White))
         .alignment(Alignment::Center);
 
-    let width: u16 = frame.area().width.fraction(0.75);
-    let height: u16 = frame.area().height.fraction(0.75);
-    let area = centered_rect(width, height, frame.area());
+    let area = centered_rect(width, text_height + 3, frame.area());
     let ok_label_area = Rect {
         x: area.x + 1,
         y: area.y + area.height - 2,
         width: area.width - 2,
         height: 1,
     };
-    let buffer = frame.buffer_mut();
-    Clear.render(area, buffer);
-    frame.render_widget(error_window, area);
+    Clear.render(area, frame.buffer_mut());
+    frame.render_widget(popup_window, area);
     frame.render_widget(ok_label, ok_label_area);
 }
 

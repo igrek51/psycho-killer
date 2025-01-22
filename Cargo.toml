@@ -19,6 +19,7 @@ libc = "0.2.153"
 ratatui = "0.29.0"
 signal-hook = "0.3.17"
 sysinfo = "0.29.11"
+textwrap = "0.16.1"
 
 [[bin]]
 name = "psycho"

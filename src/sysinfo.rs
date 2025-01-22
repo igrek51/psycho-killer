@@ -77,25 +77,28 @@ impl ProcessStat {
 
         format!(
             "Process ID: {}
-            Parent Process ID: {}
-            Full command (or process name): {}
-            Executable path: {}
-            Working directory: {}
-            Uptime: {}
-            Memory usage: {}
-            CPU usage: {} / {}
-            User ID: {}
-            ",
+Parent Process ID: {}
+User ID: {}
+Uptime: {}
+Memory usage: {}
+CPU usage: {} / {}
+
+Full command (or process name): {}
+
+Executable path: {}
+
+Working directory: {}
+",
             self.pid,
             parent_pid_str,
-            full_command,
-            self.exe,
-            self.cwd,
+            user_id_str,
             uptime,
             mem_usage,
             cpu_usage,
             max_cpu_usage,
-            user_id_str,
+            full_command,
+            self.exe,
+            self.cwd,
         )
     }
 }
