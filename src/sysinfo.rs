@@ -8,6 +8,7 @@ use sysinfo::{ComponentExt, DiskExt, NetworkExt, Process, ProcessExt, System, Sy
 use crate::logs::log;
 use crate::numbers::PercentFormatterExt;
 use crate::numbers::{format_duration, ClampNumExt};
+use crate::strings::first_cmd_part;
 
 #[derive(Debug, Default, Clone)]
 pub struct SystemProcStats {
@@ -83,7 +84,7 @@ Uptime: {}
 Memory usage: {}
 CPU usage: {} / {}
 
-Full command (or process name): {}
+Full command: {}
 
 Executable path: {}
 
@@ -520,18 +521,17 @@ pub fn merge_processes_group(processes: Vec<ProcessStat>) -> ProcessStat {
         disk_usage,
         run_time,
         cpu_time,
-        parent_pid: None,
+        parent_pid: first.parent_pid.clone(),
     }
 }
 
 pub fn extract_exe_path(process: &Process) -> String {
-    let first_part: &str = process.cmd().get(0).map(|s| &**s).unwrap_or("");
     let mut exe = process.exe().to_string_lossy().to_string();
     if exe.ends_with(" (deleted)") {
         exe = exe.trim_end_matches(" (deleted)").to_string();
     }
     match exe.is_empty() {
-        false => exe,
-        _ => first_part.to_string(),
+        false => first_cmd_part(&exe),
+        _ => first_cmd_part(process.cmd().get(0).map(|s| &**s).unwrap_or("")),
     }
 }

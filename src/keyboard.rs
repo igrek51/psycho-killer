@@ -27,17 +27,17 @@ pub fn handle_master_key(app: &mut App, key_event: KeyEvent) -> bool {
         KeyCode::Up if app.has_info() => app.move_cursor(-1),
         KeyCode::Tab => {
             app.window_focus = match app.window_focus {
-                Browse => SystemStats,
-                SystemStats => ProcessFilter,
-                ProcessFilter => Browse,
+                Browse => ProcessFilter,
+                ProcessFilter => SystemStats,
+                SystemStats => Browse,
                 _ => app.window_focus,
             }
         }
         KeyCode::BackTab => {
             app.window_focus = match app.window_focus {
-                SystemStats => Browse,
-                ProcessFilter => SystemStats,
-                Browse => ProcessFilter,
+                Browse => SystemStats,
+                SystemStats => ProcessFilter,
+                ProcessFilter => Browse,
                 _ => app.window_focus,
             }
         }

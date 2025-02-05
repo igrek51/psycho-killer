@@ -199,7 +199,7 @@ fn render_signal_panel(app: &mut App, frame: &mut Frame) {
     let widget = List::new(list_items)
         .block(
             Block::default()
-                .title("Kill command")
+                .title("Choose a command")
                 .borders(Borders::ALL)
                 .bg(Color::DarkGray),
         )
