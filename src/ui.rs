@@ -265,6 +265,7 @@ fn render_info_popup(app: &mut App, frame: &mut Frame) {
     let info_message: String = app.info_message.clone().unwrap();
     let wrapped_lines = textwrap::wrap(info_message.as_str(), (width - 3) as usize);
     let wrapped_message = wrapped_lines.join("\n");
+    app.info_lines_num = Some(wrapped_lines.len());
     let skipped_lines = wrapped_message
         .lines()
         .into_iter()

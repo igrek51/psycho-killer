@@ -32,6 +32,7 @@ pub struct App {
     pub ordering: Ordering,
     pub error_message: Option<String>,
     pub info_message: Option<String>,
+    pub info_lines_num: Option<usize>,
     pub info_message_scroll: usize,
     pub group_by_exe: bool,
 }

@@ -57,6 +57,17 @@ impl App {
         }
     }
 
+    pub fn move_cursor_end(&mut self, direction: i32) {
+        if self.has_info() {
+            let lines_count = self.info_lines_num.unwrap_or(0) as i32;
+            self.info_message_scroll = self
+                .info_message_scroll
+                .add_casting(direction * lines_count)
+                .clamp_max(lines_count)
+                .clamp_usize();
+        }
+    }
+
     pub fn move_horizontal_scroll(&mut self, delta: i32) {
         let mut new_value = self.horizontal_scroll + delta;
         new_value = new_value.max(0);

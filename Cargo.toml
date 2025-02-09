@@ -1,6 +1,6 @@
 [package]
 name = "psycho-killer"
-version = "0.6.1"
+version = "0.6.3"
 license = "MIT"
 edition = "2021"
 description = "Interactive process killer, manager and system resources monitor"
