@@ -20,22 +20,20 @@ pub struct SystemProcStats {
 pub struct ProcessStat {
     pub pid: String,
     pub pid_num: u32,
-    // Short name, e.g. chrome
-    pub name: String,
-    // Full command, e.g. /opt/google/chrome/chrome --type=renderer ...
-    pub cmd: String,
-    // Full executable path, e.g. /opt/google/chrome/chrome
-    pub exe: String,
+    pub name: String, // Short name, e.g. chrome
+    pub cmd: String,  // Full command, e.g. /opt/google/chrome/chrome --type=renderer ...
+    pub exe: String,  // Full executable path, e.g. /opt/google/chrome/chrome
     pub cwd: String,
     pub cpu_usage: f64,    // fraction of 1 core, [0-CORES]
     pub memory_usage: f64, // fraction of total memory
-    pub disk_usage: f64,
+    pub disk_usage: f64,   // Total written + read bytes
     pub user_id: Option<u32>,
     pub display_name: String,
     pub run_time: u64, // uptime in seconds
     pub time_ms: u64,  // timestamp of reading statistics
     pub cpu_time: f64, // in seconds
     pub parent_pid: Option<String>,
+    pub group_children: Vec<ProcessStat>,
 }
 
 impl ProcessStat {
@@ -63,19 +61,24 @@ impl ProcessStat {
         self.cpu_usage.to_percent_len5()
     }
 
+    fn full_command(&self) -> String {
+        match self.cmd.is_empty() {
+            false => self.cmd.clone(),
+            _ => self.name.clone(),
+        }
+    }
+
     pub fn details(&self, sys_stat: &SystemStat) -> String {
+        if !self.group_children.is_empty() {
+            return self.group_details(sys_stat);
+        }
+
         let uptime = format_duration(self.run_time);
         let mem_usage = self.memory_usage.to_percent1();
         let cpu_usage = self.format_cpu_usage();
         let user_id_str = self.user_id.map(|uid| uid.to_string()).unwrap_or("unknown".to_string());
-        let full_command: String = match self.cmd.is_empty() {
-            false => self.cmd.clone(),
-            _ => self.name.clone(),
-        };
-        let cores_num = sys_stat.cpu_num;
-        let max_cpu_usage = format!("{}%", cores_num * 100);
+        let max_cpu_usage = format!("{}%", sys_stat.cpu_num * 100);
         let parent_pid_str = self.parent_pid.clone().unwrap_or("-".to_string());
-
         format!(
             "Process ID: {}
 Parent Process ID: {}
@@ -97,9 +100,60 @@ Working directory: {}
             mem_usage,
             cpu_usage,
             max_cpu_usage,
-            full_command,
+            self.full_command(),
             self.exe,
             self.cwd,
+        )
+    }
+
+    pub fn group_details(&self, sys_stat: &SystemStat) -> String {
+        let uptime = format_duration(self.run_time);
+        let mem_usage = self.memory_usage.to_percent1();
+        let cpu_usage = self.format_cpu_usage();
+        let user_id_str = self.user_id.map(|uid| uid.to_string()).unwrap_or("unknown".to_string());
+        let max_cpu_usage = format!("{}%", sys_stat.cpu_num * 100);
+        let pids = self
+            .group_children
+            .iter()
+            .map(|p| p.pid.clone())
+            .collect::<Vec<String>>()
+            .join(", ");
+        let parent_pids = self
+            .group_children
+            .iter()
+            .map(|p| p.parent_pid.clone().unwrap_or("-".to_string()))
+            .collect::<Vec<String>>()
+            .join(", ");
+        let commands = self
+            .group_children
+            .iter()
+            .map(|p| p.full_command())
+            .collect::<Vec<String>>()
+            .join("\n");
+        format!(
+            "Processes in the group: {}
+Process IDs: {}
+Parent Process IDs: {}
+User ID: {}
+Uptime: {}
+Memory usage: {}
+CPU usage: {} / {}
+
+Executable path: {}
+
+Full commands:
+{}
+",
+            self.group_children.len(),
+            pids,
+            parent_pids,
+            user_id_str,
+            uptime,
+            mem_usage,
+            cpu_usage,
+            max_cpu_usage,
+            self.exe,
+            commands,
         )
     }
 }
@@ -107,21 +161,15 @@ Working directory: {}
 #[derive(Debug, Default, Clone)]
 pub struct SystemStat {
     pub time_ms: u64,
-
     pub os_version: String,
     pub host_name: String,
-
     pub cpu_num: usize,
-
-    pub memory: MemoryStat,
-    pub disk: DiskStat,
-    pub cpu: CpuStat,
-
+    pub memory: SystemMemoryStat,
+    pub disk: DiskIOStat,
+    pub cpu: SystemCpuStat,
     pub disk_space_usages: HashMap<String, PartitionUsage>,
-
     pub network_total_tx: u64, // total number of bytes transmitted
     pub network_total_rx: u64,
-
     pub temperatures: HashMap<String, f32>,
 }
 
@@ -133,7 +181,7 @@ impl SystemStat {
 
 #[allow(dead_code)]
 #[derive(Debug, Default, Clone)]
-pub struct MemoryStat {
+pub struct SystemMemoryStat {
     pub total: u64,
     pub used: u64,
     pub free: u64,
@@ -142,20 +190,19 @@ pub struct MemoryStat {
     pub dirty: u64,
     pub writeback: u64,
     pub usage: f64,
-
     pub swap_total: u64,
     pub swap_used: u64,
     pub swap_usage: f64,
 }
 
-impl MemoryStat {
+impl SystemMemoryStat {
     pub fn dirty_writeback(&self) -> u64 {
         self.dirty + self.writeback
     }
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct DiskStat {
+pub struct DiskIOStat {
     pub time_reading_ms: u64,
     pub time_writing_ms: u64,
 }
@@ -168,7 +215,7 @@ pub struct PartitionUsage {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct CpuStat {
+pub struct SystemCpuStat {
     pub busy_time: u64,
     pub total_time: u64,
     pub load_avg: CpuLoadAvg,
@@ -181,7 +228,7 @@ pub struct CpuLoadAvg {
     pub load_15m: f64, // 0-100%
 }
 
-pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats {
+pub fn get_proc_stats(memstat: &SystemMemoryStat, sys: &mut System) -> SystemProcStats {
     sys.refresh_processes();
 
     let clk_tck: i64 = get_clock_ticks();
@@ -203,7 +250,7 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
         let cwd: String = process.cwd().to_string_lossy().to_string();
         let mem_usage_fraction: f64 = process.memory() as f64 / 1024f64 / memstat.total as f64;
         let disk_usage = process.disk_usage().total_written_bytes as f64 + process.disk_usage().total_read_bytes as f64;
-        let cpu_time = read_cpu_time(pid.to_string()).unwrap_or(0) as f64 / clk_tck as f64;
+        let cpu_time = read_process_cpu_time(pid.to_string()).unwrap_or(0) as f64 / clk_tck as f64;
         let cpu_usage = process.cpu_usage() as f64 / 100f64;
         let parent_pid = process.parent().map(|p| p.to_string());
 
@@ -223,6 +270,7 @@ pub fn get_proc_stats(memstat: &MemoryStat, sys: &mut System) -> SystemProcStats
             time_ms: timestamp_ms,
             cpu_time,
             parent_pid,
+            group_children: Vec::new(),
         };
         processes.push(process_stat);
     }
@@ -239,9 +287,9 @@ pub fn get_system_stats(sys: &mut System) -> SystemStat {
     let host_name = sys.host_name().unwrap_or(String::new());
     let cpu_num = sys.cpus().len();
 
-    let memory: MemoryStat = read_memory_stats();
-    let disk: DiskStat = read_disk_stats();
-    let cpu: CpuStat = read_cpu_stats(cpu_num).unwrap_or_else(|_| CpuStat::default());
+    let memory: SystemMemoryStat = read_memory_stats();
+    let disk: DiskIOStat = read_disk_io_stats();
+    let cpu: SystemCpuStat = read_system_cpu_stats(cpu_num).unwrap_or_else(|_| SystemCpuStat::default());
 
     let mut network_total_tx: u64 = 0;
     let mut network_total_rx: u64 = 0;
@@ -256,7 +304,7 @@ pub fn get_system_stats(sys: &mut System) -> SystemStat {
     let mut disk_space_usages: HashMap<String, PartitionUsage> = HashMap::new();
     for disk in sys.disks() {
         let mount_point = disk.mount_point().to_str().unwrap_or("");
-        if include_mount_point(mount_point) && disk.total_space() > 0 {
+        if is_mount_point_eligible(mount_point) && disk.total_space() > 0 {
             let used = disk.total_space() - disk.available_space();
             let partition_usage = PartitionUsage {
                 total: disk.total_space(),
@@ -297,14 +345,14 @@ fn is_net_iface_physical(name: &str) -> bool {
     name.starts_with("enp") || name.starts_with("eth") || name.starts_with("wlp") || name.starts_with("wlan")
 }
 
-fn include_mount_point(mount_point: &str) -> bool {
+fn is_mount_point_eligible(mount_point: &str) -> bool {
     mount_point == "/"
         || mount_point.starts_with("/mnt/")
         || mount_point.starts_with("/media/")
         || mount_point.starts_with("/storage/")
 }
 
-pub fn read_memory_stats() -> MemoryStat {
+pub fn read_memory_stats() -> SystemMemoryStat {
     let meminfo_lines: Vec<String> = std::fs::read_to_string("/proc/meminfo")
         .unwrap_or(String::new())
         .split('\n')
@@ -332,40 +380,22 @@ pub fn read_memory_stats() -> MemoryStat {
             .context("failed to parse meminfo value as u64")
             .unwrap();
         match key {
-            "MemTotal:" => {
-                memory_total = value_kb;
-            }
-            "MemFree:" => {
-                memory_free = value_kb;
-            }
-            "MemAvailable:" => {
-                memory_available = value_kb;
-            }
-            "Buffers:" => {
-                memory_buffers = value_kb;
-            }
-            "Cached:" => {
-                memory_cache = value_kb;
-            }
-            "Dirty:" => {
-                memory_dirty = value_kb;
-            }
-            "Writeback:" => {
-                memory_writeback = value_kb;
-            }
-            "SwapTotal:" => {
-                swap_total = value_kb;
-            }
-            "SwapFree:" => {
-                swap_free = value_kb;
-            }
+            "MemTotal:" => memory_total = value_kb,
+            "MemFree:" => memory_free = value_kb,
+            "MemAvailable:" => memory_available = value_kb,
+            "Buffers:" => memory_buffers = value_kb,
+            "Cached:" => memory_cache = value_kb,
+            "Dirty:" => memory_dirty = value_kb,
+            "Writeback:" => memory_writeback = value_kb,
+            "SwapTotal:" => swap_total = value_kb,
+            "SwapFree:" => swap_free = value_kb,
             _ => {}
         }
     }
 
     let memory_used = memory_total - memory_available;
     let swap_used = swap_total - swap_free;
-    MemoryStat {
+    SystemMemoryStat {
         total: memory_total,
         used: memory_used,
         free: memory_free,
@@ -380,7 +410,7 @@ pub fn read_memory_stats() -> MemoryStat {
     }
 }
 
-fn read_disk_stats() -> DiskStat {
+fn read_disk_io_stats() -> DiskIOStat {
     let lines: Vec<String> = std::fs::read_to_string("/proc/diskstats")
         .unwrap_or(String::new())
         .split('\n')
@@ -398,14 +428,13 @@ fn read_disk_stats() -> DiskStat {
         time_reading_ms += parts[6].parse().unwrap_or(0);
         time_writing_ms += parts[10].parse().unwrap_or(0);
     }
-
-    return DiskStat {
+    return DiskIOStat {
         time_reading_ms,
         time_writing_ms,
     };
 }
 
-fn read_cpu_stats(cpu_num: usize) -> Result<CpuStat> {
+fn read_system_cpu_stats(cpu_num: usize) -> Result<SystemCpuStat> {
     let lines: Vec<String> = std::fs::read_to_string("/proc/stat")
         .context("reading /proc/stat")?
         .split('\n')
@@ -438,17 +467,15 @@ fn read_cpu_stats(cpu_num: usize) -> Result<CpuStat> {
 
     let total_time = user + nice + system + idle + iowait + irq + softirq + steal + guest + guest_nice;
     let busy_time = user + nice + system + irq + softirq + steal + guest + guest_nice;
-
     let load_avg = read_cpu_load_avg(cpu_num).unwrap_or_else(|_| CpuLoadAvg::default());
-
-    Ok(CpuStat {
+    Ok(SystemCpuStat {
         busy_time,
         total_time,
         load_avg,
     })
 }
 
-fn read_cpu_time(pid: String) -> Result<u64> {
+fn read_process_cpu_time(pid: String) -> Result<u64> {
     let line: String = std::fs::read_to_string(format!("/proc/{}/stat", pid)).context("reading /proc/PID/stat")?;
     let parts: Vec<&str> = line.split_whitespace().collect();
     if parts.len() < 14 {
@@ -522,6 +549,7 @@ pub fn merge_processes_group(processes: Vec<ProcessStat>) -> ProcessStat {
         run_time,
         cpu_time,
         parent_pid: first.parent_pid.clone(),
+        group_children: processes,
     }
 }
 
