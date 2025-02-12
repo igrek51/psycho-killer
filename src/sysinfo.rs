@@ -24,6 +24,7 @@ pub struct ProcessStat {
     pub cmd: String,  // Full command, e.g. /opt/google/chrome/chrome --type=renderer ...
     pub exe: String,  // Full executable path, e.g. /opt/google/chrome/chrome
     pub cwd: String,
+    pub status: String,
     pub cpu_usage: f64,    // fraction of 1 core, [0-CORES]
     pub memory_usage: f64, // fraction of total memory
     pub disk_usage: f64,   // Total written + read bytes
@@ -84,6 +85,7 @@ impl ProcessStat {
 Parent Process ID: {}
 User ID: {}
 Uptime: {}
+Status: {}
 Memory usage: {}
 CPU usage: {} / {}
 
@@ -97,6 +99,7 @@ Working directory: {}
             parent_pid_str,
             user_id_str,
             uptime,
+            self.status,
             mem_usage,
             cpu_usage,
             max_cpu_usage,
@@ -130,12 +133,19 @@ Working directory: {}
             .map(|p| p.full_command())
             .collect::<Vec<String>>()
             .join("\n");
+        let statuses = self
+            .group_children
+            .iter()
+            .map(|p| p.status.clone())
+            .collect::<Vec<String>>()
+            .join(", ");
         format!(
             "Processes in the group: {}
 Process IDs: {}
 Parent Process IDs: {}
 User ID: {}
 Uptime: {}
+Status: {}
 Memory usage: {}
 CPU usage: {} / {}
 
@@ -149,6 +159,7 @@ Full commands:
             parent_pids,
             user_id_str,
             uptime,
+            statuses,
             mem_usage,
             cpu_usage,
             max_cpu_usage,
@@ -253,6 +264,7 @@ pub fn get_proc_stats(memstat: &SystemMemoryStat, sys: &mut System) -> SystemPro
         let cpu_time = read_process_cpu_time(pid.to_string()).unwrap_or(0) as f64 / clk_tck as f64;
         let cpu_usage = process.cpu_usage() as f64 / 100f64;
         let parent_pid = process.parent().map(|p| p.to_string());
+        let status = process.status().to_string();
 
         let process_stat = ProcessStat {
             pid: pid.to_string(),
@@ -261,6 +273,7 @@ pub fn get_proc_stats(memstat: &SystemMemoryStat, sys: &mut System) -> SystemPro
             cmd,
             exe: exe_path,
             cwd,
+            status,
             cpu_usage,
             memory_usage: mem_usage_fraction,
             disk_usage,
@@ -540,6 +553,7 @@ pub fn merge_processes_group(processes: Vec<ProcessStat>) -> ProcessStat {
         cmd: first.cmd.clone(),
         exe: first.exe.clone(),
         cwd: first.cwd.clone(),
+        status: first.status.clone(),
         user_id: first.user_id,
         display_name: first.exe.clone(),
         time_ms: first.time_ms,
@@ -558,8 +572,12 @@ pub fn extract_exe_path(process: &Process) -> String {
     if exe.ends_with(" (deleted)") {
         exe = exe.trim_end_matches(" (deleted)").to_string();
     }
-    match exe.is_empty() {
-        false => first_cmd_part(&exe),
-        _ => first_cmd_part(process.cmd().get(0).map(|s| &**s).unwrap_or("")),
+    if !exe.is_empty() {
+        return first_cmd_part(&exe);
     }
+    let cmd = first_cmd_part(process.cmd().get(0).map(|s| &**s).unwrap_or(""));
+    if !cmd.is_empty() {
+        return cmd;
+    }
+    process.name().to_string()
 }

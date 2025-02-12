@@ -17,13 +17,15 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.area();
     let w = area.width as f32;
-    let r_width = 44.;
+    let mut r_width = 32.;
     let mut l_width = (w - r_width).clamp_min(w * 0.4);
     match app.window_focus {
         WindowFocus::ProcessFilter | WindowFocus::Browse | WindowFocus::SignalPick => {
             l_width = l_width.clamp_min(w * 0.75).clamp_min(58.).clamp_max(w * 0.9);
         }
-        WindowFocus::SystemStats => {}
+        WindowFocus::SystemStats => {
+            r_width = 42.;
+        }
     }
     let layout = Layout::default()
         .direction(Direction::Horizontal)
@@ -56,7 +58,7 @@ fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
-    let p_text = "`Ctrl+F` to filter. `R` to refresh. `S` to sort. `Enter` to execute. `?` for more controls.";
+    let p_text = "`?` for controls. `Ctrl+F` to filter. `R` to refresh. `S` to sort. `Enter` to execute.";
     let widget = Paragraph::new(p_text)
         .wrap(Wrap { trim: true })
         .block(

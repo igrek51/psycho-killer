@@ -16,25 +16,26 @@ PSycho KILLer is an interactive process manager and system resource monitor that
 - "Seek & Destroy" - Quickly find and terminate processes in an interactive manner.
 - If a process still remains alive, kill it with sudo privileges and stronger signals.
 - Monitor usage of system resources:
-  - Memory, including `Dirty` and `Writeback` memory to keep an eye on ongoing copying
-  - CPU
+  - Memory usage, including `Dirty` and `Writeback` memory to keep an eye on ongoing copying
+  - CPU usage
   - Disk space usage
   - Disk IO utliziation
   - Network transfer
   - Temperatures
+- Group processes by executable path and show aggregated stats, e.g. total memory usage of a multiprocess application
 
 ## Installation
 ### Cargo
 ```sh
 cargo install psycho-killer
 ```
-This will install `psycho` binary in Rust's Path.
+This will install latest version of `psycho` binary in Rust's Path.
 
 ### Binary
 Alternatively, you can download the compiled binary:
 
 ```sh
-curl -L https://github.com/igrek51/psycho-killer/releases/download/0.5.2/psycho -o ~/bin/psycho
+curl -L https://github.com/igrek51/psycho-killer/releases/download/0.6.4/psycho -o ~/bin/psycho
 chmod +x ~/bin/psycho
 ```
 
@@ -50,3 +51,17 @@ Choose the preferred method to terminate the process:
 - Forcefully kill the process with `SIGKILL` signal
 - Terminate the process with `SIGTERM` signal as Superuser
 - Forcefully kill the process with `SIGKILL` signal as Superuser
+
+## Keyboard controls
+- `?` to show help.
+- `Ctrl+F` or `F` to filter processes.
+- Arrows `↑` and `↓` to navigate list.
+- `F5` or `R` to refresh list.
+- `S` to sort.
+- `M` to order by memory usage.
+- `C` to order by CPU usage.
+- `U` to order by uptime.
+- `G` group processes by executable path.
+- `Enter` to select or confirm.
+- `Tab` to switch tab.
+- `Esc` to cancel or quit.

@@ -10,7 +10,7 @@ use crate::sysinfo::{get_proc_stats, get_system_stats, group_by_exe_path, Proces
 
 const HELP_INFO: &str = "Keyboard controls:
 `?` to show help.
-`Ctrl+F` to filter processes.
+`Ctrl+F` or `F` to filter processes.
 Arrows `↑` and `↓` to navigate list.
 `F5` or `R` to refresh list.
 `S` to sort.
@@ -18,9 +18,9 @@ Arrows `↑` and `↓` to navigate list.
 `C` to order by CPU usage.
 `U` to order by uptime.
 `G` group processes by executable path.
-`Enter` to execute.
+`Enter` to select or confirm.
 `Tab` to switch tab.
-`Esc` to cancel.";
+`Esc` to cancel or quit.";
 
 impl App {
     pub fn refresh_system_stats(&mut self) {
