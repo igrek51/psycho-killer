@@ -17,19 +17,24 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.area();
     let w = area.width as f32;
-    let mut r_width = 32.;
-    let mut l_width = (w - r_width).clamp_min(w * 0.4);
+    let mut r_width = (w * 0.25).clamp_max(48.0);
+    let mut l_width = w - r_width;
     match app.window_focus {
         WindowFocus::ProcessFilter | WindowFocus::Browse | WindowFocus::SignalPick => {
-            l_width = l_width.clamp_min(w * 0.75).clamp_min(58.).clamp_max(w * 0.9);
+            l_width = l_width.clamp_min(58.).clamp_max(w * 0.9);
+            r_width = w - l_width;
         }
         WindowFocus::SystemStats => {
-            r_width = 42.;
+            r_width = r_width.clamp_min(42.).clamp_max(w * 0.9);
+            l_width = w - r_width;
         }
     }
     let layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(vec![Constraint::Min(l_width as u16), Constraint::Min(r_width as u16)])
+        .constraints(vec![
+            Constraint::Length(l_width as u16),
+            Constraint::Length(r_width as u16),
+        ])
         .split(area);
 
     render_left(app, frame, layout[0]);
