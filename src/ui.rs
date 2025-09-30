@@ -53,14 +53,15 @@ fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
     let p_text = "`?` for controls. `Ctrl+F` to filter. `R` to refresh. `S` to sort. `Enter` to execute.";
     let widget = Paragraph::new(p_text)
         .wrap(Wrap { trim: true })
+        .style(Style::default().fg(Color::White))
         .block(
             Block::default()
                 .title(format!("PSycho KILLer {}", VERSION))
                 .title_alignment(Alignment::Center)
                 .borders(Borders::ALL)
-                .border_type(BorderType::Rounded),
+                .border_type(BorderType::Rounded)
+                .style(Style::default().fg(Color::LightRed)),
         )
-        .style(Style::default().fg(Color::White))
         .alignment(Alignment::Center);
 
     frame.render_widget(widget, area);
