@@ -16,29 +16,16 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.area();
-    let w = area.width as f32;
-    let mut r_width = (w * 0.25).clamp_max(48.0);
-    let mut l_width = w - r_width;
-    match app.window_focus {
-        WindowFocus::ProcessFilter | WindowFocus::Browse | WindowFocus::SignalPick => {
-            l_width = l_width.clamp_min(58.).clamp_max(w * 0.9);
-            r_width = w - l_width;
-        }
-        WindowFocus::SystemStats => {
-            r_width = r_width.clamp_min(42.).clamp_max(w * 0.9);
-            l_width = w - r_width;
-        }
-    }
+    let h = area.height as f32;
+    let system_panel_height = (h * 0.35).clamp(12.0, 32.0) as u16;
+
     let layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(vec![
-            Constraint::Length(l_width as u16),
-            Constraint::Length(r_width as u16),
-        ])
+        .direction(Direction::Vertical)
+        .constraints(vec![Constraint::Min(10), Constraint::Length(system_panel_height)])
         .split(area);
 
-    render_left(app, frame, layout[0]);
-    render_right(app, frame, layout[1]);
+    render_main_view(app, frame, layout[0]);
+    render_system_view(app, frame, layout[1]);
 
     if app.window_focus == WindowFocus::SignalPick {
         render_signal_panel(app, frame);
@@ -51,7 +38,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
 }
 
-fn render_left(app: &mut App, frame: &mut Frame, area: Rect) {
+fn render_main_view(app: &mut App, frame: &mut Frame, area: Rect) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints(vec![Constraint::Max(3), Constraint::Min(5), Constraint::Max(3)])
@@ -73,7 +60,7 @@ fn render_info_panel(_app: &mut App, frame: &mut Frame, area: Rect) {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
         )
-        .style(Style::default().fg(Color::LightRed))
+        .style(Style::default().fg(Color::White))
         .alignment(Alignment::Center);
 
     frame.render_widget(widget, area);
@@ -173,7 +160,7 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
     frame.render_stateful_widget(table, area, &mut app.proc_list_table_state);
 }
 
-fn render_right(app: &mut App, frame: &mut Frame, area: Rect) {
+fn render_system_view(app: &mut App, frame: &mut Frame, area: Rect) {
     let panel_color = match app.window_focus {
         WindowFocus::SystemStats => Color::LightYellow,
         _ => Color::Yellow,
