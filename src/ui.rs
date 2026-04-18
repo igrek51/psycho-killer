@@ -17,11 +17,11 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.area();
     let h = area.height as f32;
-    let system_panel_height = (h * 0.35).clamp(12.0, 32.0) as u16;
+    let system_panel_height = (h * 0.35).clamp(8.0, 32.0) as u16;
 
     let layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(vec![Constraint::Min(10), Constraint::Length(system_panel_height)])
+        .constraints(vec![Constraint::Min(8), Constraint::Length(system_panel_height)])
         .split(area);
 
     render_main_view(app, frame, layout[0]);
