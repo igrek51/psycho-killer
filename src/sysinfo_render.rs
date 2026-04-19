@@ -122,13 +122,13 @@ impl SystemStat {
             let disk_read_delta = self.disk.time_reading_ms as i32 - previous_stat.disk.time_reading_ms as i32;
             let disk_write_delta = self.disk.time_writing_ms as i32 - previous_stat.disk.time_writing_ms as i32;
             let time_delta = self.time_ms - previous_stat.time_ms;
-            if time_delta > 0 {
-                let read_usage = disk_read_delta as f64 / time_delta as f64;
+            if time_delta > 0 && self.cpu_num > 0 {
+                let read_usage = disk_read_delta as f64 / time_delta as f64 / self.cpu_num as f64;
                 lines.push(Line::from(vec![
                     Span::styled("Reading: ", Style::default().fg(Color::Cyan)),
                     Span::styled(read_usage.to_percent1(), get_usage_style(read_usage)),
                 ]));
-                let write_usage = disk_write_delta as f64 / time_delta as f64;
+                let write_usage = disk_write_delta as f64 / time_delta as f64 / self.cpu_num as f64;
                 lines.push(Line::from(vec![
                     Span::styled("Writing: ", Style::default().fg(Color::Cyan)),
                     Span::styled(write_usage.to_percent1(), get_usage_style(write_usage)),
