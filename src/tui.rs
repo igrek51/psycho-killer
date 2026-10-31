@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
 use ratatui::{backend::CrosstermBackend, Terminal};
-use std::{io, panic};
+use std::{io, panic, time::Duration};
 
 pub type CrosstermTerminal = ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stderr>>;
 
@@ -22,7 +22,7 @@ impl Tui {
     pub fn new() -> Self {
         let backend = CrosstermBackend::new(std::io::stderr());
         let terminal: CrosstermTerminal = Terminal::new(backend).unwrap();
-        let event_handler: EventHandler = EventHandler::new(3000).listen();
+        let event_handler: EventHandler = EventHandler::new();
         Self {
             terminal,
             event_handler,
@@ -32,7 +32,6 @@ impl Tui {
     pub fn enter(&mut self) -> Result<()> {
         terminal::enable_raw_mode()?; // https://docs.rs/crossterm/latest/crossterm/terminal/index.html#raw-mode
         crossterm::execute!(io::stderr(), EnterAlternateScreen,)?;
-        self.event_handler.resume();
 
         let panic_hook = panic::take_hook();
         panic::set_hook(Box::new(move |panic| {
@@ -51,13 +50,26 @@ impl Tui {
         Ok(())
     }
 
-    pub fn handle_events(&mut self, app: &mut App) -> Result<()> {
-        match self.event_handler.next()? {
-            Event::Tick => app.tick(),
+    pub fn handle_events(&mut self, app: &mut App, timeout: Duration) -> Result<()> {
+        if let Some(event) = self.event_handler.next(timeout)? {
+            self.handle_event(app, event);
+        }
+        // Handle a burst of already queued events before redrawing, so fast
+        // typing or key repeat costs one frame instead of one frame per key.
+        while !app.should_quit {
+            match self.event_handler.try_next()? {
+                Some(event) => self.handle_event(app, event),
+                None => break,
+            }
+        }
+        Ok(())
+    }
+
+    fn handle_event(&mut self, app: &mut App, event: Event) {
+        match event {
             Event::Key(key_event) => update_on_key(app, key_event),
             Event::Resize => {}
-        };
-        Ok(())
+        }
     }
 
     fn fatal_exit() -> Result<()> {
@@ -67,7 +79,6 @@ impl Tui {
     }
 
     pub fn exit(&mut self) -> Result<()> {
-        self.event_handler.suspend();
         terminal::disable_raw_mode()?;
         crossterm::execute!(io::stderr(), LeaveAlternateScreen,)?;
         Ok(())

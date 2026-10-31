@@ -3,6 +3,7 @@ use ratatui::widgets::TableState;
 use signal_hook::{consts::SIGINT, consts::SIGTERM, iterator::Signals};
 use std::sync::mpsc;
 use std::thread;
+use std::time::{Duration, Instant};
 use sysinfo::{System, SystemExt};
 
 use crate::action_menu::{generate_known_menu_actions, MenuAction};
@@ -10,6 +11,8 @@ use crate::appdata::{Ordering, WindowFocus};
 use crate::logs::print_logs;
 use crate::sysinfo::{ProcessStat, SystemProcStats, SystemStat};
 use crate::tui::Tui;
+
+const STATS_REFRESH_INTERVAL: Duration = Duration::from_millis(3000);
 
 #[derive(Debug, Default)]
 pub struct App {
@@ -35,6 +38,7 @@ pub struct App {
     pub info_lines_num: Option<usize>,
     pub info_message_scroll: usize,
     pub group_by_exe: bool,
+    pub max_pid_len: usize,
 }
 
 impl App {
@@ -54,9 +58,15 @@ impl App {
         let mut tui = Tui::new();
         tui.enter()?;
 
+        let mut last_refresh = Instant::now();
         while !self.should_quit {
+            if last_refresh.elapsed() >= STATS_REFRESH_INTERVAL {
+                self.tick();
+                last_refresh = Instant::now();
+            }
+            let timeout = STATS_REFRESH_INTERVAL.saturating_sub(last_refresh.elapsed());
             tui.draw(self)?;
-            tui.handle_events(self)?;
+            tui.handle_events(self, timeout)?;
 
             signal_rx.try_recv().ok().map(|_| {
                 self.quit();

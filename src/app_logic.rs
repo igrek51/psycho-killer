@@ -109,6 +109,8 @@ impl App {
         let sort_fn = self.get_sort_fn();
         self.filtered_processes.sort_unstable_by(sort_fn);
 
+        self.max_pid_len = self.filtered_processes.iter().map(|p| p.pid.len()).max().unwrap_or(0);
+
         self.move_cursor(0);
     }
 
@@ -164,7 +166,7 @@ impl App {
         self.window_focus = WindowFocus::Browse;
     }
 
-    pub fn format_sys_stats(&self) -> Vec<Line> {
+    pub fn format_sys_stats(&self) -> Vec<Line<'_>> {
         self.sys_stat
             .summarize(&self.init_stat, &self.previous_stat)
             .iter()

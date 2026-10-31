@@ -94,9 +94,46 @@ fn render_filter_panel(app: &mut App, frame: &mut Frame, area: Rect) {
     frame.render_widget(widget, area);
 }
 
+/// Scroll offset that keeps `selected` visible in a window of `view_height`
+/// items out of `total`, starting from the current offset.
+pub fn visible_offset(selected: usize, current_offset: usize, view_height: usize, total: usize) -> usize {
+    if view_height == 0 || total == 0 {
+        return 0;
+    }
+    let max_offset = total.saturating_sub(view_height);
+    let mut offset = current_offset.min(max_offset);
+    if selected < offset {
+        offset = selected;
+    } else if selected >= offset + view_height {
+        offset = selected + 1 - view_height;
+    }
+    offset.min(max_offset)
+}
+
 fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
-    let rows: Vec<Row> = app
-        .filtered_processes
+    let total = app.filtered_processes.len();
+    // 2 border rows + 1 header row + 1 header bottom margin (see the header below).
+    let view_height = (area.height.saturating_sub(4) as usize).max(1);
+    let offset = visible_offset(
+        app.process_cursor,
+        app.proc_list_table_state.offset(),
+        view_height,
+        total,
+    );
+    let selected = if total == 0 {
+        None
+    } else {
+        Some(app.process_cursor.min(total - 1))
+    };
+    app.proc_list_table_state = app
+        .proc_list_table_state
+        .clone()
+        .with_offset(offset)
+        .with_selected(selected);
+
+    // Build only the visible slice: per-frame work must be O(visible), not O(all processes).
+    let end = (offset + view_height).min(total);
+    let rows: Vec<Row> = app.filtered_processes[offset..end]
         .iter()
         .map(|it: &ProcessStat| {
             Row::new(vec![
@@ -108,12 +145,7 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
             ])
         })
         .collect();
-    let col_pid_length: i32 = app
-        .filtered_processes
-        .iter()
-        .map(|it| it.pid.to_string().len())
-        .max()
-        .unwrap_or(0) as i32;
+    let col_pid_length: i32 = app.max_pid_len as i32;
     let w = area.width as i32;
     let uptime_col_w = 9;
     let mem_col_w = 5;
@@ -158,7 +190,10 @@ fn render_proc_list(app: &mut App, frame: &mut Frame, area: Rect) {
         .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">>");
 
-    frame.render_stateful_widget(table, area, &mut app.proc_list_table_state);
+    let mut state = TableState::default()
+        .with_offset(0)
+        .with_selected(selected.map(|index| index - offset));
+    frame.render_stateful_widget(table, area, &mut state);
 }
 
 fn render_system_view(app: &mut App, frame: &mut Frame, area: Rect) {

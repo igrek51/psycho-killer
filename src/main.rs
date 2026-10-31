@@ -6,6 +6,7 @@ mod event;
 mod keyboard;
 mod logs;
 mod numbers;
+mod render_window_test;
 mod strings;
 mod sysinfo;
 mod sysinfo_render;

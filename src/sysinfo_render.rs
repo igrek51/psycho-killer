@@ -7,7 +7,7 @@ use crate::sysinfo::{PartitionUsage, SystemStat};
 use itertools::Itertools;
 
 impl SystemStat {
-    pub fn summarize(&self, init_stat: &SystemStat, previous_stat: &SystemStat) -> Vec<Line> {
+    pub fn summarize(&self, init_stat: &SystemStat, previous_stat: &SystemStat) -> Vec<Line<'_>> {
         let mut lines: Vec<Line> = Vec::new();
 
         self.add_body_line(&mut lines, format!("OS: {}", self.os_version));
