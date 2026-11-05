@@ -11,6 +11,8 @@ mod strings;
 mod sysinfo;
 mod sysinfo_render;
 mod tui;
+#[cfg(unix)]
+mod tty_input;
 mod ui;
 
 use anyhow::{Context, Result};

@@ -55,7 +55,7 @@ impl App {
         self.refresh_system_stats();
         self.refresh_processes();
         self.init_stat = self.sys_stat.clone();
-        let mut tui = Tui::new();
+        let mut tui = Tui::new()?;
         tui.enter()?;
 
         let mut last_refresh = Instant::now();
